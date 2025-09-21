@@ -147,6 +147,23 @@ class Schedule:
     
     _schedule_header: list[str] = []
     
+    schedule_headers = {
+            "start_score": "Round level (eg 301, 501, 701, ...)",
+            "round_limit": "option to stop the round after this limit hs been played",
+            "round": "Number of rounds",
+            "max_leg": "Number of legs for the set",
+            "best_of": "Stop this set once this number of legs has been won by a player",
+            "change_first": "If enabled, alternate the starter from the previous round",
+            "p1_name": "Name of the player or team",
+            "p1_start_score": "Start score of player with handicap (eg handicap 10 for a 301 -> 291)",
+            "p1_com": "If enabled, computer player",
+            "p1_com_level": "Player difficulty level for computer player (if enabled)",
+            "p2_name": "Name of the player or team",
+            "p2_start_score": "Start score of player with handicap (eg handicap 10 for a 301 -> 291)",
+            "p2_com": "If enabled, computer player",
+            "p2_com_level": "Player difficulty level for computer player (if enabled)",
+    }
+    
     def __init__(self):
     # def __init__(self, data):
         pass
@@ -166,14 +183,15 @@ class Schedule:
     
     # def _extract_schedule_from_ini(self) -> None:
     
-    def extract_schedule_from_original_ini(self, data):
+    def extract_schedule_from_original_ini(self, data) -> bool:
+
         if "schedule" not in data:
             messagebox.showerror(title="Error in loading n01.ini file", message="The schedule section is missing in the n01.ini file.")
-            exit(1)
-        # self._schedule_from_ini = data["schedule"]
+            return False
+
         self._original_schedule = data["schedule"]
         self._sort_schedule_from_toml_by_set(self._original_schedule)
-        # self._original_schedule = data
+        return True
 
     def _sort_schedule_from_toml_by_set(self, data: dict[str, str|int]) -> None:
         # Group the data into rounds
@@ -284,6 +302,7 @@ class Schedule:
 
         if not self._convert_imported_schedule_to_toml_schedule():
             return False
+        
         return True
     
     def _convert_imported_schedule_to_toml_schedule(self) -> bool:
@@ -297,10 +316,15 @@ class Schedule:
 
 
 class UI:
-    _window: tk.Tk
+    _window:tk.Tk
+    _buttons_frame:tk.Frame
+    _schedule_frame:tk.Frame
     
-    _original_schedule: dict[int, dict[str, str|int]] = {}
-    _original_schedule_loaded: bool = False 
+    _original_schedule:dict[int, dict[str, str|int]] = {}
+    _original_schedule_loaded:bool = False 
+    
+    _modified_schedule:dict[int, dict[str, str|int]] = {}
+    
     
     def __init__(self):
         # initialise Tk window
@@ -313,55 +337,103 @@ class UI:
         self._window.maxsize(1920,1080)
         self._window.config(width=640, height=480)    
         
+        self._buttons_frame = tk.Frame(self._window, bg="yellow")
+        self._schedule_frame = tk.Frame(self._window, bg="lightblue")
+    
         self._generate_buttons_frame()    
         
     def _generate_buttons_frame(self) -> None:
 
         # Generate a frame for the buttons
-        buttons_frame = tk.Frame(self._window, bg="yellow")
-        buttons_frame.place(x = 10, y = 10)
+        # self._buttons_frame = tk.Frame(self._window, bg="yellow")
+        self._buttons_frame.place(x = 10, y = 10)
         
         buttons_width:int = 20
         style:ttk.Style = ttk.Style()
         
         style.configure("quit.TButton", background="red", justify=tk.CENTER, anchor=tk.CENTER, bordercolor="gray")
-        
-        # - Display schedule
-        display_schedule = ttk.Button(buttons_frame, text="Display schedule", command=self._display_schedule, width=buttons_width)
+        # - Load schedule from ini
+        load_ini_schedule = ttk.Button(self._buttons_frame, text="Load current game schedule", command=self._load_original_ini_schedule, width=buttons_width)
+        # - Load schedule from csv
+        load_schedule_from_csv = ttk.Button(self._buttons_frame, text="Load schedule from csv", command=self._load_modified_schedule, width=buttons_width)
+        # - Display original schedule
+        display_original_schedule = ttk.Button(self._buttons_frame, text="Display current game schedule", command=self._display_original_schedule, width=buttons_width)
+        # - Display loaded schedule
+        display_modified_schedule = ttk.Button(self._buttons_frame, text="Display modified schedule", command=self._display_modified_schedule, width=buttons_width)
         # - Modify schedule
-        modify_schedule = ttk.Button(buttons_frame, text="Modify schedule", command=self._modify_schedule, width=buttons_width)
+        modify_schedule = ttk.Button(self._buttons_frame, text="Modify loaded schedule", command=self._modify_schedule, width=buttons_width)
         # - Save schedule
-        save_schedule = ttk.Button(buttons_frame, text="Save schedule", command=self._save_schedule, width=buttons_width)
+        save_schedule = ttk.Button(self._buttons_frame, text="Save loaded schedule", command=self._save_schedule, width=buttons_width)
         # - quit
-        quit_app = ttk.Button(buttons_frame, text="Quit", command=self._quit, width=buttons_width-10, style="quit.TButton")
+        quit_app = ttk.Button(self._buttons_frame, text="Quit", command=self._quit, width=buttons_width-10, style="quit.TButton")
 
-        # Add the buttons to the frame     
-        display_schedule.grid(row=0, column=0, columnspan=1, padx=10, pady=10)
-        modify_schedule.grid(row=0, column=1, columnspan=1, padx=10, pady=10)
-        save_schedule.grid(row=0, column=2, columnspan=1, padx=10, pady=10)
-        quit_app.grid(row=0, column=3, columnspan=1, padx=10, pady=10)
+        # Add the buttons to the frame
+        load_ini_schedule.grid(row=0, column=0, columnspan=1, padx=10, pady=10)
+        load_schedule_from_csv.grid(row=1, column=0, columnspan=1, padx=10, pady=10)
+        display_original_schedule.grid(row=0, column=1, columnspan=1, padx=10, pady=10)
+        display_modified_schedule.grid(row=1, column=1, columnspan=1, padx=10, pady=10)
+        modify_schedule.grid(row=0, column=2, columnspan=1, padx=10, pady=10)
+        save_schedule.grid(row=1, column=2, columnspan=1, padx=10, pady=10)
+        quit_app.grid(row=1, column=3, columnspan=1, padx=10, pady=10)
    
     def _load_original_ini_schedule(self) -> None:
         
         ini_file:N01Ini = N01Ini()
         ini_schedule:Schedule = Schedule()
 
-        ini_schedule.extract_schedule_from_original_ini(ini_file.original_ini_data_from_toml)
+        if not(ini_schedule.extract_schedule_from_original_ini(ini_file.original_ini_data_from_toml)):
+            return
 
         self._original_schedule = ini_schedule.original_schedule_sorted_by_set
         
         if self._original_schedule is not None:
             self._original_schedule_loaded = True
             
-    def _display_schedule(self) -> None:
-        # Load the original schedule if needed
-        if not self._original_schedule_loaded:
-            self._load_original_ini_schedule()
-            
-        ic(self._original_schedule)
+        self._display_original_schedule()
+
+    def _load_modified_schedule(self) -> None:
+        schedule: Schedule = Schedule()
         
-        original_schedule_frame:tk.Frame = tk.Frame(self._window, bg="lightblue")
-        original_schedule_frame.place(x = 10, y = 80)
+        schedule.import_schedule_from_csv()
+        self._modified_schedule= schedule._imported_schedule_sorted_by_set
+        
+        self._display_modified_schedule()
+ 
+    def _display_original_schedule(self) -> None:
+        self._display_schedule(self._original_schedule)
+ 
+    def _display_modified_schedule(self) -> None:
+        self._display_schedule(self._modified_schedule)
+        
+    def _display_schedule(self, schedule:dict[int, dict[str, str|int]] = {}) -> None:
+        if schedule is None:
+            messagebox.info("request schedule not loaded")
+            return
+        # # Load the original schedule if needed
+        # if not self._original_schedule_loaded:
+        #     self._load_original_ini_schedule()
+            
+        # ic(self._original_schedule)
+        if self._schedule_frame is not None:
+            self._schedule_frame.destroy()
+            
+        # Non-scrollable frame
+        self._schedule_frame = tk.Frame(self._window, bg="lightblue")
+        self._schedule_frame.place(x = 10, y = 120)
+        
+        # Non-working scrollable frame as per: https://blog.teclado.com/tkinter-scrollable-frames/
+        # schedule_frame:tk.Frame = tk.Frame(self._window, bg="lightblue")
+        # canvas = tk.Canvas(schedule_frame)
+        # scrollbar = ttk.Scrollbar(schedule_frame, orient="vertical", command=canvas.yview)
+        # original_schedule_frame = ttk.Frame(canvas)
+        # original_schedule_frame.bind(
+        #     "<Configure>",
+        #     lambda e: canvas.configure(
+        #         scrollregion=canvas.bbox("all")
+        #     )
+        # )        
+        # canvas.create_window((10, 80), window=original_schedule_frame, anchor="nw")
+        # canvas.configure(yscrollcommand=scrollbar.set)
         
         # Pre-define the widths of the table cells
         # Note that this this does not adapt if font is face or size is changed
@@ -369,8 +441,8 @@ class UI:
             "start_score": 6,
             "round_limit": 6,
             "round": 6,
-            "max_leg": 5,
-            "best_of": 5,
+            "max_leg": 4,
+            "best_of": 4,
             "change_first": 7,
             "p1_name": 10,
             "p1_start_score": 6,
@@ -385,46 +457,94 @@ class UI:
         # Define the style for the headers and for the values
         style:ttk.Style = ttk.Style()
         
-        style.configure("header.TLabel", 
-                        justify=tk.CENTER, 
-                        anchor=tk.CENTER,
-                        background="lightblue", 
-                        borderwidth=2,
-                        highlightcolor="black",
-                        bordercolor="red")
+        # style.configure("header.TLabel", 
+        #                 justify=tk.CENTER, 
+        #                 anchor=tk.CENTER,
+        #                 background="lightblue", 
+        #                 # borderwidth=2,
+        #                 # highlightcolor="black",
+        #                 # bordercolor="red",
+        #                 # highlightbackground="black",
+        #                 # highlightthickness=2,
+        #                 sticky=tk.NSEW
+        #                 )
         
-        style.configure("value.TTextBox",
-                        foreground="red")
+        # style.configure("value.TLabel",
+        #                 # foreground="red",
+        #                 bordercolor="black",
+        #                 # borderwidth=2,
+        #                 # highlightbackground="black",
+        #                 # highlightthickness=2,
+        #                 # highlightcolor="red"
+                        
+        #                 )
         
-        
+
         # Generate a table of textboxes to display the original schedule
 
         x = 0
         y = 0
         
         # Create a label for each header in the schedule
-        for key, _ in self._original_schedule[0].items():
-            header = ttk.Label(original_schedule_frame, 
+        
+        style.configure("header.TLabel", 
+                background="lightblue", 
+                )       
+        
+        header = ttk.Label(self._schedule_frame, 
+                    text="set\nno", 
+                    width=3,
+                    justify=tk.CENTER,  
+                    anchor=tk.CENTER,   
+                    foreground="red",
+                    style="header.TLabel"
+                    )
+        header.grid(row=y, column=x, ipadx=1, ipady=1 )
+        x += 1
+
+        for key, _ in schedule[0].items():
+            header = ttk.Label(self._schedule_frame, 
                                text=str(key).replace("_", "\n"), 
-                               width=columns_width[key], 
-                               style="header.TLabel")
-            header.grid(row=y, column=x)
+                               width=columns_width[key],
+                               justify=tk.CENTER,  
+                               anchor=tk.CENTER,
+                               style="header.TLabel"
+                               )
+            header.grid(row=y, column=x, ipadx=1, ipady=1 )
             x += 1
         y += 1
         x = 0
         
         # Create a textbox for each value in the schedule
-        for row_key in self._original_schedule:
-            for col_key in self._original_schedule[row_key]:
-                textbox = ttk.Label(original_schedule_frame, 
-                                    text=str(self._original_schedule[row_key][col_key]), 
+        style.configure("value.TLabel",
+                background="white", 
+                )
+        
+        for row_key in schedule:
+            textbox = ttk.Label(self._schedule_frame, 
+                    text=str(y), 
+                    width=3, 
+                    foreground = "red",
+                    anchor=tk.CENTER,
+                    style="value.TLabel"
+                    )
+            textbox.grid(row=y, column=x, padx=1, pady=1)
+            x += 1
+            
+            for col_key in schedule[row_key]:
+                
+                if col_key == "change_first" or col_key == "p1_com" or col_key == "p2_com":
+                    text_value = "✓" if schedule[row_key][col_key] == 1 else "✕"
+                else:
+                    text_value = str(schedule[row_key][col_key])
+                    
+                textbox = ttk.Label(self._schedule_frame, 
+                                    text=text_value, 
                                     width=columns_width[col_key], 
-                                    background="white", 
-                                    borderwidth=1,
                                     anchor=tk.CENTER,
-                                    style="value.TTextBox"
+                                    style="value.TLabel"
                                     )
-                textbox.grid(row=y, column=x)
+                textbox.grid(row=y, column=x, padx=1, pady=1)
                 x += 1
 
             y += 1
