@@ -24,14 +24,14 @@ class N01Ini:
         self._identify_ini_files()
         
         if not self._select_original_ini_file_path():
-            print("No n01.ini file selected")
+            messagebox.showerror(title="Error selecting n01.ini file", message="no ini file selected")
             return
 
         if not self._load_original_ini_file():
-            print("Error in loading TOML data")
+            messagebox.showerror(title="Error loading n01.ini file", message="Error in loading TOML data")
             return
            
-        print("n01.ini file (game settings and schedule if one) loaded successfully")
+        # print("n01.ini file (game settings and schedule if one) loaded successfully")
         # ic(len(self._original_ini_from_toml))
 
     @property
@@ -73,20 +73,20 @@ class N01Ini:
     def _select_original_ini_file_path(self) -> bool:
         
         if self._ini_installer_path != "":
-            answer:bool = messagebox.askyesno(title="game settings with schedule found", message="Game settings with schedule found from game installer\nUse it?")
+            answer:bool = messagebox.askyesno(title="game settings with schedule found", message="Game settings found\nthat includes a schedule\nfrom game installer\nUse it?")
             if answer:
                 self._original_ini_file_with_path = self._ini_installer_path
                 return self._original_ini_file_with_path != ""
         else:
-            messagebox.showinfo(title="game settings with schedule", message="No game settings including a schedule found\nat installer path location")
+            messagebox.showinfo(title="game settings with schedule", message="No game settings found\nthat includes a schedule\nat installer path location")
         
         if self._ini_current_path != "":
-            answer = messagebox.askyesno(title="game settings with schedule found", message="Game settings with schedule found in current path\nUse it?")
+            answer = messagebox.askyesno(title="game settings with schedule found", message="Game settings found\nthat includes a schedule\nin current path\nUse it?")
             if answer:
                 self._original_ini_file_with_path = self._ini_current_path
                 return self._original_ini_file_with_path != ""
         else:
-            messagebox.showinfo(title="game settings with schedule", message="No game settings including a schedule found\nin current directory")        
+            messagebox.showinfo(title="game settings with schedule", message="No game settings found\nthat includes a schedule\nin current directory")        
         
         # If above not found or not used, 
         # ask for a file location
@@ -96,7 +96,7 @@ class N01Ini:
         self._original_ini_file_with_path = askopenfilename(title=title, initialdir=".", filetypes=filetypes)
         
         if not self._has_schedule(self._original_ini_file_with_path):
-            answer = messagebox.askyesno(title="game settings loaded", message="game settings loaded but no schedule in it.\nuse anyway?")
+            answer = messagebox.askyesno(title="game settings loaded", message="game settings loaded\nbut no schedule in it.\nuse anyway?")
             if not answer:
                 self._original_ini_file_with_path = ""
                
@@ -140,7 +140,7 @@ class N01Ini:
                     raw_data += line + ('"|||"\n' if line.endswith('=') else "\n")
 
         except ValueError as e:
-            print(f"{e}")
+            messagebox.showerror(title="Error loading n01.ini file", message=f"error: {e}")
             return False
         
         if "[schedule]" not in raw_data:
@@ -200,7 +200,7 @@ class N01Ini:
                     f.write(this_line + '\n')
                     
         except Exception as e:
-            print(f"{e}")
+            messagebox.showerror(title="Error saving n01.ini file", message=f"error: {e}")
             return False
             
         return True
@@ -312,7 +312,7 @@ class Schedule:
                     writer.writerow(this_row_data)
 
         except Exception as e:
-            print(f"{e}")
+            messagebox.showerror(title="Error saving schedule csv file", message=f"error: {e}")
             return False
                     
         return True
@@ -459,8 +459,8 @@ class UI:
         self._original_schedule = ini_schedule.original_schedule_sorted_by_set
         
         # ic(ini_file.original_ini_data_from_toml)
-        ic(ini_schedule.original_schedule_sorted_by_set)
-        ic(self._original_schedule)
+        # ic(ini_schedule.original_schedule_sorted_by_set)
+        # ic(self._original_schedule)
         
         if self._original_schedule is not None:
             self._original_schedule_loaded = True
@@ -482,14 +482,11 @@ class UI:
         self._display_schedule(self._modified_schedule)
         
     def _display_schedule(self, schedule:dict[int, dict[str, str|int]] = {}) -> None:
+        
         if schedule is None:
             messagebox.info("request schedule not loaded")
             return
-        # # Load the original schedule if needed
-        # if not self._original_schedule_loaded:
-        #     self._load_original_ini_schedule()
-            
-        # ic(self._original_schedule)
+
         if self._schedule_frame is not None:
             self._schedule_frame.grid_forget()
             self._schedule_frame.destroy()
@@ -534,36 +531,12 @@ class UI:
         # Define the style for the headers and for the values
         style:ttk.Style = ttk.Style()
         
-        # style.configure("header.TLabel", 
-        #                 justify=tk.CENTER, 
-        #                 anchor=tk.CENTER,
-        #                 background="lightblue", 
-        #                 # borderwidth=2,
-        #                 # highlightcolor="black",
-        #                 # bordercolor="red",
-        #                 # highlightbackground="black",
-        #                 # highlightthickness=2,
-        #                 sticky=tk.NSEW
-        #                 )
-        
-        # style.configure("value.TLabel",
-        #                 # foreground="red",
-        #                 bordercolor="black",
-        #                 # borderwidth=2,
-        #                 # highlightbackground="black",
-        #                 # highlightthickness=2,
-        #                 # highlightcolor="red"
-                        
-        #                 )
-        
 
         # Generate a table of textboxes to display the original schedule
-
         x = 0
         y = 0
         
         # Create a label for each header in the schedule
-        
         style.configure("header.TLabel", 
                 background="lightblue", 
                 )       
@@ -576,7 +549,7 @@ class UI:
                     foreground="red",
                     style="header.TLabel"
                     )
-        header.grid(row=y, column=x, ipadx=1, ipady=1 )
+        header.grid(row=y, column=x, padx=1, pady=1)
         x += 1
 
         for key, _ in schedule[0].items():
@@ -587,7 +560,7 @@ class UI:
                                anchor=tk.CENTER,
                                style="header.TLabel"
                                )
-            header.grid(row=y, column=x, ipadx=1, ipady=1 )
+            header.grid(row=y, column=x, padx=1, pady=1)
             x += 1
         y += 1
         x = 0
@@ -623,7 +596,6 @@ class UI:
                                     )
                 textbox.grid(row=y, column=x, padx=1, pady=1)
                 x += 1
-
             y += 1
             x = 0
             
