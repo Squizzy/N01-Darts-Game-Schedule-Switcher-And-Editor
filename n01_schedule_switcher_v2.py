@@ -3,6 +3,8 @@ from tkinter.filedialog import askopenfilename
 from tkinter import messagebox
 import csv
 # from typing import Any
+import tkinter as tk # type: ignore
+from tkinter import ttk # type: ignore
 
 from icecream import ic # type: ignore
 
@@ -27,6 +29,7 @@ class N01Ini:
         # self._extract_schedule_from_ini()
         
         print("n01.ini file loaded successfully")
+        ic(len(self._original_ini_from_toml))
 
     @property
     def ini_file_location(self) -> str:
@@ -135,6 +138,7 @@ class N01Ini:
 
 class Schedule:
     _original_schedule: dict[str, str|int] = {}
+    # _orginal_schedule_sorted_by_set: dict[int, dict[str, str|int]] = {}
     _orginal_schedule_sorted_by_set: dict[int, dict[str, str|int]] = {}
     
     _schedule_csv_to_import: str = ""
@@ -144,11 +148,17 @@ class Schedule:
     _schedule_header: list[str] = []
     
     def __init__(self):
+    # def __init__(self, data):
         pass
+        # self.extract_schedule_from_original_ini(data)
         
     @property
     def original_schedule(self) -> dict[str, str|int]:
         return self._original_schedule
+    
+    @property
+    def original_schedule_sorted_by_set(self) -> dict[int, dict[str, str|int]]:
+        return self._orginal_schedule_sorted_by_set
     
     @property
     def imported_schedule(self) -> dict[str, str|int]:
@@ -157,7 +167,12 @@ class Schedule:
     # def _extract_schedule_from_ini(self) -> None:
     
     def extract_schedule_from_original_ini(self, data):
-        self._schedule_from_ini = data["schedule"]
+        if "schedule" not in data:
+            messagebox.showerror(title="Error in loading n01.ini file", message="The schedule section is missing in the n01.ini file.")
+            exit(1)
+        # self._schedule_from_ini = data["schedule"]
+        self._original_schedule = data["schedule"]
+        self._sort_schedule_from_toml_by_set(self._original_schedule)
         # self._original_schedule = data
 
     def _sort_schedule_from_toml_by_set(self, data: dict[str, str|int]) -> None:
@@ -180,7 +195,7 @@ class Schedule:
             if this_set not in self._orginal_schedule_sorted_by_set:
                 self._orginal_schedule_sorted_by_set[this_set] = {}
                 
-            self._orginal_schedule_sorted_by_set[this_set][key] = data[key]
+            self._orginal_schedule_sorted_by_set[this_set][key[:-(len(str(this_set)) + 1)]] = data[key]
 
     def _extract_schedule_headers(self) -> None:
 
@@ -281,20 +296,175 @@ class Schedule:
         return True
 
 
+class UI:
+    _window: tk.Tk
+    
+    _original_schedule: dict[int, dict[str, str|int]] = {}
+    _original_schedule_loaded: bool = False 
+    
+    def __init__(self):
+        # initialise Tk window
+        self._window = tk.Tk()
+        
+        # display the window
+        self._window.title("N01 Schedule Switcher")
+        self._window.configure(background="DarKGreen")
+        self._window.minsize(640,480)
+        self._window.maxsize(1920,1080)
+        self._window.config(width=640, height=480)    
+        
+        self._generate_buttons_frame()    
+        
+    def _generate_buttons_frame(self) -> None:
+
+        # Generate a frame for the buttons
+        buttons_frame = tk.Frame(self._window, bg="yellow")
+        buttons_frame.place(x = 10, y = 10)
+        
+        buttons_width:int = 20
+        style:ttk.Style = ttk.Style()
+        
+        style.configure("quit.TButton", background="red", justify=tk.CENTER, anchor=tk.CENTER, bordercolor="gray")
+        
+        # - Display schedule
+        display_schedule = ttk.Button(buttons_frame, text="Display schedule", command=self._display_schedule, width=buttons_width)
+        # - Modify schedule
+        modify_schedule = ttk.Button(buttons_frame, text="Modify schedule", command=self._modify_schedule, width=buttons_width)
+        # - Save schedule
+        save_schedule = ttk.Button(buttons_frame, text="Save schedule", command=self._save_schedule, width=buttons_width)
+        # - quit
+        quit_app = ttk.Button(buttons_frame, text="Quit", command=self._quit, width=buttons_width-10, style="quit.TButton")
+
+        # Add the buttons to the frame     
+        display_schedule.grid(row=0, column=0, columnspan=1, padx=10, pady=10)
+        modify_schedule.grid(row=0, column=1, columnspan=1, padx=10, pady=10)
+        save_schedule.grid(row=0, column=2, columnspan=1, padx=10, pady=10)
+        quit_app.grid(row=0, column=3, columnspan=1, padx=10, pady=10)
+   
+    def _load_original_ini_schedule(self) -> None:
+        
+        ini_file:N01Ini = N01Ini()
+        ini_schedule:Schedule = Schedule()
+
+        ini_schedule.extract_schedule_from_original_ini(ini_file.original_ini_data_from_toml)
+
+        self._original_schedule = ini_schedule.original_schedule_sorted_by_set
+        
+        if self._original_schedule is not None:
+            self._original_schedule_loaded = True
+            
+    def _display_schedule(self) -> None:
+        # Load the original schedule if needed
+        if not self._original_schedule_loaded:
+            self._load_original_ini_schedule()
+            
+        ic(self._original_schedule)
+        
+        original_schedule_frame:tk.Frame = tk.Frame(self._window, bg="lightblue")
+        original_schedule_frame.place(x = 10, y = 80)
+        
+        # Pre-define the widths of the table cells
+        # Note that this this does not adapt if font is face or size is changed
+        columns_width = {
+            "start_score": 6,
+            "round_limit": 6,
+            "round": 6,
+            "max_leg": 5,
+            "best_of": 5,
+            "change_first": 7,
+            "p1_name": 10,
+            "p1_start_score": 6,
+            "p1_com": 5,
+            "p1_com_level": 5,
+            "p2_name": 10,
+            "p2_start_score": 6,
+            "p2_com": 5,
+            "p2_com_level": 5,
+        }
+        
+        # Define the style for the headers and for the values
+        style:ttk.Style = ttk.Style()
+        
+        style.configure("header.TLabel", 
+                        justify=tk.CENTER, 
+                        anchor=tk.CENTER,
+                        background="lightblue", 
+                        borderwidth=2,
+                        highlightcolor="black",
+                        bordercolor="red")
+        
+        style.configure("value.TTextBox",
+                        foreground="red")
+        
+        
+        # Generate a table of textboxes to display the original schedule
+
+        x = 0
+        y = 0
+        
+        # Create a label for each header in the schedule
+        for key, _ in self._original_schedule[0].items():
+            header = ttk.Label(original_schedule_frame, 
+                               text=str(key).replace("_", "\n"), 
+                               width=columns_width[key], 
+                               style="header.TLabel")
+            header.grid(row=y, column=x)
+            x += 1
+        y += 1
+        x = 0
+        
+        # Create a textbox for each value in the schedule
+        for row_key in self._original_schedule:
+            for col_key in self._original_schedule[row_key]:
+                textbox = ttk.Label(original_schedule_frame, 
+                                    text=str(self._original_schedule[row_key][col_key]), 
+                                    width=columns_width[col_key], 
+                                    background="white", 
+                                    borderwidth=1,
+                                    anchor=tk.CENTER,
+                                    style="value.TTextBox"
+                                    )
+                textbox.grid(row=y, column=x)
+                x += 1
+
+            y += 1
+            x = 0
+            
+            # header = ttk.Label(original_schedule_frame, text=str(key).replace("_", "\n"), justify=tk.CENTER, background="lightblue")
+                # textbox = ttk.Entry(original_schedule_frame)
+                # textbox.insert(0, str(self._original_schedule[row_key][col_key]))
+    
+    def _modify_schedule(self) -> None:
+        pass
+    
+    def _save_schedule(self) -> None:
+        pass
+
+    def _quit(self)-> None:
+        self._window.destroy()
+    
+    @property
+    def start(self) -> None:
+        self._window.mainloop()
+
+
 def main() -> int:
-    ini_file: N01Ini = N01Ini()
+    # ini_file: N01Ini = N01Ini()
     
     # schedule: Schedule = Schedule(ini_file.original_schedule)
     # ic(schedule.original_schedule)
     
     # schedule.save_schedule_as_csv(schedule.original_schedule, "sample_schedule.csv")
     
-    schedule: Schedule = Schedule()
-    schedule.import_schedule_from_csv()
+    # schedule: Schedule = Schedule()
+    # schedule.import_schedule_from_csv()
     
-    ini_file.replace_original_schedule_with_imported_schedule(schedule.imported_schedule)
+    # ini_file.replace_original_schedule_with_imported_schedule(schedule.imported_schedule)
     
-    ini_file.save_ini_with_updated_schedule()
+    # ini_file.save_ini_with_updated_schedule()
+    
+    app:UI = UI()
+    app.start
     
     return 0
 
