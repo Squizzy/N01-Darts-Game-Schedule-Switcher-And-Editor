@@ -5,6 +5,7 @@ import csv
 # from typing import Any
 import tkinter as tk # type: ignore
 from tkinter import ttk # type: ignore
+import os
 
 from icecream import ic # type: ignore
 
@@ -16,7 +17,7 @@ class N01Ini:
     _updated_ini_file_with_path: str = ""
 
     def __init__(self):
-        print("Loading n01.ini file")
+        # print("Loading n01.ini file")
         
         if not self._select_original_ini_file_path():
             print("No n01.ini file selected")
@@ -25,11 +26,9 @@ class N01Ini:
         if not self._load_original_ini_file():
             print("Error in loading TOML data")
             return
-        
-        # self._extract_schedule_from_ini()
-        
-        print("n01.ini file loaded successfully")
-        ic(len(self._original_ini_from_toml))
+           
+        print("n01.ini file (game settings and schedule if one) loaded successfully")
+        # ic(len(self._original_ini_from_toml))
 
     @property
     def ini_file_location(self) -> str:
@@ -41,6 +40,50 @@ class N01Ini:
     
     def _select_original_ini_file_path(self) -> bool:
         
+        # installer_path_ini_found: bool = False
+        # current_path_ini_found:bool = False
+        
+        def has_schedule(path) -> bool:
+            with open(path, "r") as f:
+                file=f.readlines()
+                return "[schedule]" in file
+        
+        def search_file(path, title, path_message) -> bool:
+            ic(path)
+            if os.path.exists(path):
+                if has_schedule(path):
+                    messagebox.showinfo(title=title, message=f"Settings file from {path_message}\nfound with schedule")
+                    return True
+                else:
+                    messagebox.showinfo(title=installer_ini_title, message=f"Settings file from {path_message}\nfound but no schedule in it")
+            else:
+                messagebox.showinfo(title=installer_ini_title, message=f"Settings file from {path_message}\nnot found")
+            return False
+            
+        # if N01 installer has been run, the ini file is located in the virtual store
+        # %appdata%/Local/virtualStore/Programs Files (x86)/n01
+        installer_ini_path_message = "game installer"
+        installer_ini_path:str = os.path.join(str(os.getenv("APPDATA")), "Local", "virtualStore", "Programs Files (x86)", "n01", "n01.ini")
+        installer_ini_title="Searching schedule from game installer settings"
+        if search_file(installer_ini_path, installer_ini_title, installer_ini_path_message):
+            answer = messagebox.askyesno(title="game schedule found", message=f"game schedule found in {installer_ini_path_message}\nuse it?")
+            if answer:
+                self._original_ini_file_with_path = installer_ini_path
+                return self._original_ini_file_with_path != ""
+            
+        # Search in the current path
+        current_path_path_message = "current path"
+        current_path:str =os.path.join(".", "n01.ini")
+        current_path_title="Searching schedule from current path"
+        if search_file(current_path, current_path_title, current_path_path_message):
+            answer = messagebox.askyesno(title="game schedule found", message=f"game schedule found in {current_path_path_message}\nuse it?")
+            if answer:
+                self._original_ini_file_with_path = current_path
+                return self._original_ini_file_with_path != ""
+        
+        # If above not found or not used, 
+        # ask for a file location
+        # starting from current directory
         title: str = "Select n01.ini file"
         filetypes: list[tuple[str, str]] = [("INI files", "*.ini"), ("TOML files", "*.toml"), ("All files", "*.*")]
         self._original_ini_file_with_path = askopenfilename(title=title, initialdir=".", filetypes=filetypes)
@@ -337,7 +380,7 @@ class UI:
         self._window.maxsize(1920,1080)
         self._window.config(width=640, height=480)    
         
-        self._buttons_frame = tk.Frame(self._window, bg="yellow")
+        self._buttons_frame = tk.Frame(self._window, bg="yellow", width=630)
         self._schedule_frame = tk.Frame(self._window, bg="lightblue")
     
         self._generate_buttons_frame()    
@@ -348,33 +391,38 @@ class UI:
         # self._buttons_frame = tk.Frame(self._window, bg="yellow")
         self._buttons_frame.place(x = 10, y = 10)
         
-        buttons_width:int = 20
+        buttons_width:int = 30
         style:ttk.Style = ttk.Style()
         
         style.configure("quit.TButton", background="red", justify=tk.CENTER, anchor=tk.CENTER, bordercolor="gray")
         # - Load schedule from ini
-        load_ini_schedule = ttk.Button(self._buttons_frame, text="Load current game schedule", command=self._load_original_ini_schedule, width=buttons_width)
+        load_original_schedule = ttk.Button(self._buttons_frame, text="Load current game schedule", command=self._load_original_ini_schedule, width=buttons_width)
+        # - Display original schedule
+        display_original_schedule = ttk.Button(self._buttons_frame, text="Display current game current schedule", command=self._display_original_schedule, width=buttons_width)
         # - Load schedule from csv
         load_schedule_from_csv = ttk.Button(self._buttons_frame, text="Load schedule from csv", command=self._load_modified_schedule, width=buttons_width)
-        # - Display original schedule
-        display_original_schedule = ttk.Button(self._buttons_frame, text="Display current game schedule", command=self._display_original_schedule, width=buttons_width)
         # - Display loaded schedule
-        display_modified_schedule = ttk.Button(self._buttons_frame, text="Display modified schedule", command=self._display_modified_schedule, width=buttons_width)
+        display_modified_schedule = ttk.Button(self._buttons_frame, text="Display loaded/modified schedule", command=self._display_modified_schedule, width=buttons_width)
         # - Modify schedule
         modify_schedule = ttk.Button(self._buttons_frame, text="Modify loaded schedule", command=self._modify_schedule, width=buttons_width)
         # - Save schedule
-        save_schedule = ttk.Button(self._buttons_frame, text="Save loaded schedule", command=self._save_schedule, width=buttons_width)
+        save_schedule = ttk.Button(self._buttons_frame, text="Save loaded/modified schedule", command=self._save_schedule, width=buttons_width)
+        # - Set modified schedule to game
+        set_schedule = ttk.Button(self._buttons_frame, text="Set modified schedule to game", command=self._set_schedule, width=buttons_width)
         # - quit
         quit_app = ttk.Button(self._buttons_frame, text="Quit", command=self._quit, width=buttons_width-10, style="quit.TButton")
 
         # Add the buttons to the frame
-        load_ini_schedule.grid(row=0, column=0, columnspan=1, padx=10, pady=10)
-        load_schedule_from_csv.grid(row=1, column=0, columnspan=1, padx=10, pady=10)
-        display_original_schedule.grid(row=0, column=1, columnspan=1, padx=10, pady=10)
-        display_modified_schedule.grid(row=1, column=1, columnspan=1, padx=10, pady=10)
-        modify_schedule.grid(row=0, column=2, columnspan=1, padx=10, pady=10)
-        save_schedule.grid(row=1, column=2, columnspan=1, padx=10, pady=10)
-        quit_app.grid(row=1, column=3, columnspan=1, padx=10, pady=10)
+        load_original_schedule.grid(    row=0, column=0, columnspan=1, padx=5, pady=2)
+        display_original_schedule.grid( row=1, column=0, columnspan=1, padx=5, pady=2)
+        
+        load_schedule_from_csv.grid(    row=0, column=1, columnspan=1, padx=5, pady=2)
+        display_modified_schedule.grid( row=1, column=1, columnspan=1, padx=5, pady=2)
+        modify_schedule.grid(           row=2, column=1, columnspan=1, padx=5, pady=2)
+        save_schedule.grid(             row=3, column=1, columnspan=1, padx=5, pady=2)
+        set_schedule.grid(              row=4, column=1, columnspan=1, padx=5, pady=2)
+        
+        quit_app.grid(                  row=1, column=3, columnspan=1, padx=5, pady=2)
    
     def _load_original_ini_schedule(self) -> None:
         
@@ -419,7 +467,7 @@ class UI:
             
         # Non-scrollable frame
         self._schedule_frame = tk.Frame(self._window, bg="lightblue")
-        self._schedule_frame.place(x = 10, y = 120)
+        self._schedule_frame.place(x = 10, y = 170)
         
         # Non-working scrollable frame as per: https://blog.teclado.com/tkinter-scrollable-frames/
         # schedule_frame:tk.Frame = tk.Frame(self._window, bg="lightblue")
@@ -560,6 +608,9 @@ class UI:
     def _save_schedule(self) -> None:
         pass
 
+    def _set_schedule(self) -> None:
+        pass
+    
     def _quit(self)-> None:
         self._window.destroy()
     
