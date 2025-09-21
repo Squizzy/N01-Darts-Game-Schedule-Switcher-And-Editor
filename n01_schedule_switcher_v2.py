@@ -10,6 +10,8 @@ import os
 from icecream import ic # type: ignore
 
 class N01Ini:
+    _ini_installer_path: str = ""
+    _ini_current_path: str = ""
     _original_ini_from_toml: dict[str, dict[str, str|int]] = {}
     _original_ini_file_with_path: str = ""
     
@@ -18,6 +20,8 @@ class N01Ini:
 
     def __init__(self):
         # print("Loading n01.ini file")
+        
+        self._identify_ini_files()
         
         if not self._select_original_ini_file_path():
             print("No n01.ini file selected")
@@ -38,48 +42,51 @@ class N01Ini:
     def original_ini_data_from_toml(self) -> dict[str, dict[str, str|int]]:
         return self._original_ini_from_toml
     
-    def _select_original_ini_file_path(self) -> bool:
+    def _has_schedule(self, path) -> bool:
+        with open(path, "r") as f:
+            file=f.readlines()
+            found:bool = False
+            for line in file:
+                if "[schedule]" in line:
+                    found = True
+                    break
+            return found
         
-        # installer_path_ini_found: bool = False
-        # current_path_ini_found:bool = False
-        
-        def has_schedule(path) -> bool:
-            with open(path, "r") as f:
-                file=f.readlines()
-                return "[schedule]" in file
-        
-        def search_file(path, title, path_message) -> bool:
-            ic(path)
-            if os.path.exists(path):
-                if has_schedule(path):
-                    messagebox.showinfo(title=title, message=f"Settings file from {path_message}\nfound with schedule")
-                    return True
-                else:
-                    messagebox.showinfo(title=installer_ini_title, message=f"Settings file from {path_message}\nfound but no schedule in it")
-            else:
-                messagebox.showinfo(title=installer_ini_title, message=f"Settings file from {path_message}\nnot found")
-            return False
+    def _file_found_at_path(self, path) -> bool:
+        if os.path.exists(path):
+            return self._has_schedule(path)
+        return False
+            
+    def _identify_ini_files(self) -> None:
             
         # if N01 installer has been run, the ini file is located in the virtual store
         # %appdata%/Local/virtualStore/Programs Files (x86)/n01
-        installer_ini_path_message = "game installer"
         installer_ini_path:str = os.path.join(str(os.getenv("APPDATA")), "Local", "virtualStore", "Programs Files (x86)", "n01", "n01.ini")
-        installer_ini_title="Searching schedule from game installer settings"
-        if search_file(installer_ini_path, installer_ini_title, installer_ini_path_message):
-            answer = messagebox.askyesno(title="game schedule found", message=f"game schedule found in {installer_ini_path_message}\nuse it?")
-            if answer:
-                self._original_ini_file_with_path = installer_ini_path
-                return self._original_ini_file_with_path != ""
+        if self._file_found_at_path(installer_ini_path):
+            self._ini_installer_path = installer_ini_path
             
         # Search in the current path
-        current_path_path_message = "current path"
         current_path:str =os.path.join(".", "n01.ini")
-        current_path_title="Searching schedule from current path"
-        if search_file(current_path, current_path_title, current_path_path_message):
-            answer = messagebox.askyesno(title="game schedule found", message=f"game schedule found in {current_path_path_message}\nuse it?")
+        if self._file_found_at_path(current_path):
+            self._ini_current_path = current_path
+        
+    def _select_original_ini_file_path(self) -> bool:
+        
+        if self._ini_installer_path != "":
+            answer:bool = messagebox.askyesno(title="game settings with schedule found", message="Game settings with schedule found from game installer\nUse it?")
             if answer:
-                self._original_ini_file_with_path = current_path
+                self._original_ini_file_with_path = self._ini_installer_path
                 return self._original_ini_file_with_path != ""
+        else:
+            messagebox.showinfo(title="game settings with schedule", message="No game settings including a schedule found\nat installer path location")
+        
+        if self._ini_current_path != "":
+            answer = messagebox.askyesno(title="game settings with schedule found", message="Game settings with schedule found in current path\nUse it?")
+            if answer:
+                self._original_ini_file_with_path = self._ini_current_path
+                return self._original_ini_file_with_path != ""
+        else:
+            messagebox.showinfo(title="game settings with schedule", message="No game settings including a schedule found\nin current directory")        
         
         # If above not found or not used, 
         # ask for a file location
@@ -87,12 +94,38 @@ class N01Ini:
         title: str = "Select n01.ini file"
         filetypes: list[tuple[str, str]] = [("INI files", "*.ini"), ("TOML files", "*.toml"), ("All files", "*.*")]
         self._original_ini_file_with_path = askopenfilename(title=title, initialdir=".", filetypes=filetypes)
+        
+        if not self._has_schedule(self._original_ini_file_with_path):
+            answer = messagebox.askyesno(title="game settings loaded", message="game settings loaded but no schedule in it.\nuse anyway?")
+            if not answer:
+                self._original_ini_file_with_path = ""
                
         return self._original_ini_file_with_path != ""
-        
+
     def _load_original_ini_file(self) -> bool:
         raw_data_lines: list[str] = []
         raw_data: str = ""
+        
+        empty_schedule = [
+            "[schedule]\n",
+            "count=0",
+            "start_score_0=0\n",
+            "round_limit_0=0\n",
+            "round_0=0",
+            "max_leg_0=0\n",
+            "best_of_0=0\n",
+            "change_first_0=0\n",
+            'p1_name_0="player1"\n',
+            "p1_start_score_0=0\n",
+            "p1_com_0=0\n",
+            "p1_com_level_0=0\n",
+            'p2_name_0="player2"\n',
+            "p2_start_score_0=0\n",
+            "p2_com_0=0\n",
+            "p2_com_level_0=0\n"
+            ]
+        
+        self._original_ini_from_toml = {}
         
         try:
             with open(self._original_ini_file_with_path, "r") as f:
@@ -110,11 +143,10 @@ class N01Ini:
             print(f"{e}")
             return False
         
+        if "[schedule]" not in raw_data:
+            raw_data += "\n".join(empty_schedule)
+        
         self._original_ini_from_toml=toml.loads(raw_data)
-        
-        # ic(self._original_ini_from_toml)
-        
-        # self.save_ini_file("this_is_new1.ini", self._ini_from_toml)
 
         return True
     
@@ -181,8 +213,7 @@ class N01Ini:
 
 class Schedule:
     _original_schedule: dict[str, str|int] = {}
-    # _orginal_schedule_sorted_by_set: dict[int, dict[str, str|int]] = {}
-    _orginal_schedule_sorted_by_set: dict[int, dict[str, str|int]] = {}
+    _original_schedule_sorted_by_set: dict[int, dict[str, str|int]] = {}
     
     _schedule_csv_to_import: str = ""
     _imported_schedule: dict[str, str|int] = {}
@@ -208,9 +239,7 @@ class Schedule:
     }
     
     def __init__(self):
-    # def __init__(self, data):
         pass
-        # self.extract_schedule_from_original_ini(data)
         
     @property
     def original_schedule(self) -> dict[str, str|int]:
@@ -218,13 +247,11 @@ class Schedule:
     
     @property
     def original_schedule_sorted_by_set(self) -> dict[int, dict[str, str|int]]:
-        return self._orginal_schedule_sorted_by_set
+        return self._original_schedule_sorted_by_set
     
     @property
     def imported_schedule(self) -> dict[str, str|int]:
         return self._imported_schedule
-    
-    # def _extract_schedule_from_ini(self) -> None:
     
     def extract_schedule_from_original_ini(self, data) -> bool:
 
@@ -238,6 +265,7 @@ class Schedule:
 
     def _sort_schedule_from_toml_by_set(self, data: dict[str, str|int]) -> None:
         # Group the data into rounds
+        self._original_schedule_sorted_by_set = {}
         
         for key in data:
             this_set: int = 0
@@ -246,21 +274,15 @@ class Schedule:
                 continue
             
             this_set = int(key[-3:]) if key[-3:].isnumeric() else int(key[-2:]) if key[-2:].isnumeric() else int(key[-1])
-            # if key[-3:].isnumeric():
-            #     this_set = int(key[-3:])
-            # elif key[-2:].isnumeric():
-            #     this_set = int(key[-2:])
-            # else:
-            #     this_set = int(key[-1])
 
-            if this_set not in self._orginal_schedule_sorted_by_set:
-                self._orginal_schedule_sorted_by_set[this_set] = {}
+            if this_set not in self._original_schedule_sorted_by_set:
+                self._original_schedule_sorted_by_set[this_set] = {}
                 
-            self._orginal_schedule_sorted_by_set[this_set][key[:-(len(str(this_set)) + 1)]] = data[key]
+            self._original_schedule_sorted_by_set[this_set][key[:-(len(str(this_set)) + 1)]] = data[key]
 
     def _extract_schedule_headers(self) -> None:
 
-        for key in self._orginal_schedule_sorted_by_set[0]:
+        for key in self._original_schedule_sorted_by_set[0]:
             self._schedule_header.append(key[:-2])
     
     def save_schedule_as_csv(self, data: dict[str, str|int], filename) -> bool:
@@ -281,12 +303,12 @@ class Schedule:
                 writer = csv.DictWriter(f, fieldnames=self._schedule_header)
                 writer.writeheader()
                 
-                for set in range(len(self._orginal_schedule_sorted_by_set)):
+                for set in range(len(self._original_schedule_sorted_by_set)):
                     this_row_data: dict[str, str|int] = {}
                     for key in self._schedule_header:
                         # The headers do not that the "_0" or "_1" etc 
                         # so this need to be indicated when writing the CSV to ensure it goes to the correct column
-                        this_row_data[key] =  self._orginal_schedule_sorted_by_set[set][f"{key}_{set}"]
+                        this_row_data[key] =  self._original_schedule_sorted_by_set[set][f"{key}_{set}"]
                     writer.writerow(this_row_data)
 
         except Exception as e:
@@ -429,10 +451,16 @@ class UI:
         ini_file:N01Ini = N01Ini()
         ini_schedule:Schedule = Schedule()
 
+        self._original_schedule = {}
+
         if not(ini_schedule.extract_schedule_from_original_ini(ini_file.original_ini_data_from_toml)):
             return
 
         self._original_schedule = ini_schedule.original_schedule_sorted_by_set
+        
+        # ic(ini_file.original_ini_data_from_toml)
+        ic(ini_schedule.original_schedule_sorted_by_set)
+        ic(self._original_schedule)
         
         if self._original_schedule is not None:
             self._original_schedule_loaded = True
@@ -449,7 +477,7 @@ class UI:
  
     def _display_original_schedule(self) -> None:
         self._display_schedule(self._original_schedule)
- 
+
     def _display_modified_schedule(self) -> None:
         self._display_schedule(self._modified_schedule)
         
@@ -463,6 +491,7 @@ class UI:
             
         # ic(self._original_schedule)
         if self._schedule_frame is not None:
+            self._schedule_frame.grid_forget()
             self._schedule_frame.destroy()
             
         # Non-scrollable frame
