@@ -6,7 +6,7 @@ import csv
 import tkinter as tk # type: ignore
 from tkinter import ttk # type: ignore
 import os
-from tktooltip import ToolTip # type: ignore
+from tktooltip import ToolTip # type: ignore 
 #from typing import Any
 
 from icecream import ic # type: ignore
@@ -415,6 +415,7 @@ class UI:
     _schedule_frame:tk.Frame
     _modify_padx:int
     _modify_pady:int
+    _style:ttk.Style
     
     _original_schedule:dict[int, dict[str, str|int]] = {}
     _original_schedule_loaded:bool = False 
@@ -445,9 +446,9 @@ class UI:
         self._buttons_frame.place(x = 10, y = 10)
         
         buttons_width:int = 30
-        style:ttk.Style = ttk.Style()
+        self._style = ttk.Style()
         
-        style.configure("quit.TButton", background="red", justify=tk.CENTER, anchor=tk.CENTER, bordercolor="gray")
+        self._style.configure("quit.TButton", background="red", justify=tk.CENTER, anchor=tk.CENTER, bordercolor="gray")
         # - Load schedule from ini
         load_original_schedule = ttk.Button(self._buttons_frame, text="Load current game schedule", command=self._load_original_ini_schedule, width=buttons_width)
         # - Display original schedule
@@ -560,7 +561,7 @@ class UI:
         }
         
         # Define the style for the headers and for the values
-        style:ttk.Style = ttk.Style()
+        # self._style = ttk.Style()
         
 
         # Generate a table of textboxes to display the original schedule
@@ -568,7 +569,7 @@ class UI:
         y = 0
         
         # Create a label for each header in the schedule
-        style.configure("header.TLabel", 
+        self._style.configure("header.TLabel", 
                 background="lightblue", 
                 )       
         
@@ -597,7 +598,7 @@ class UI:
         x = 0
         
         # Create a textbox for each value in the schedule
-        style.configure("value.TLabel",
+        self._style.configure("value.TLabel",
                 background="white", 
                 )
         
@@ -688,8 +689,8 @@ class UI:
         
         
         # Define the style for the headers and for the values
-        style:ttk.Style = ttk.Style()
-        style.configure("Custom.TCheckbutton", background="lightblue")
+        # style:ttk.Style = ttk.Style()
+        self._style.configure("Custom.TCheckbutton", background="lightblue")
         
         # Set the table variables
         self._start_score_spinbox: dict[int, ttk.Spinbox] = {}
@@ -730,7 +731,7 @@ class UI:
         y = 0
         
         # Create a label for each header in the schedule
-        style.configure("header.TLabel", 
+        self._style.configure("header.TLabel", 
                 background="lightblue", 
                 )       
         
@@ -743,7 +744,7 @@ class UI:
                     foreground="red",
                     style="header.TLabel"
                     )
-        self._header[x].grid(row=y, column=x, padx=1, pady=1)
+        self._header[x].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
         x += 1
 
         # Add the headers
@@ -755,24 +756,26 @@ class UI:
                                anchor=tk.CENTER,
                                style="header.TLabel"
                                )
-            self._header[x].grid(row=y, column=x, padx=1, pady=1)
+            self._header[x].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
             x += 1
         y += 1
-        x = 0
         
         # Add tooltips on the headers
         for i in range(x):
-            ToolTip(self._header[i], msg=Schedule.schedule_headers[self._header[i]["text"]] if self._header[i]["text"] in Schedule.schedule_headers else "n/a")
+            ToolTip(self._header[i], msg=Schedule.schedule_headers[(self._header[i]["text"]).replace("\n", "_")] if (self._header[i]["text"]).replace("\n", "_") in Schedule.schedule_headers else "n/a")
+        
+        x = 0
         
         
         for row_key in schedule:
             # Add the set value (information not in the schedule)
-            textbox = ttk.Label(self._schedule_frame, 
+            textbox = tk.Label(self._schedule_frame, 
                     text=str(y), 
                     width=3, 
-                    foreground = "red",
+                    foreground="red",
                     anchor=tk.CENTER,
-                    style="value.TLabel"
+                    # style="value.TLabel"
+                    background="lightblue"
                     )
             textbox.grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
             x += 1
