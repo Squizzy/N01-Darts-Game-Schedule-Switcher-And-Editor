@@ -12,6 +12,9 @@ from icecream import ic # type: ignore
 class N01Ini:
     _ini_installer_path: str = ""
     _ini_current_path: str = ""
+    _ini_installer_schedule_found:bool = False
+    _ini_current_path_schedule_found = False
+    
     _original_ini_from_toml: dict[str, dict[str, str|int]] = {}
     _original_ini_file_with_path: str = ""
     
@@ -52,51 +55,75 @@ class N01Ini:
                     break
             return found
         
-    def _file_found_at_path(self, path) -> bool:
+    def _file_found_at_path(self, path) -> tuple[bool, bool]:
         if os.path.exists(path):
-            return self._has_schedule(path)
-        return False
+            return True, self._has_schedule(path)
+        return False, False
             
     def _identify_ini_files(self) -> None:
             
         # if N01 installer has been run, the ini file is located in the virtual store
         # %appdata%/Local/virtualStore/Programs Files (x86)/n01
-        installer_ini_path:str = os.path.join(str(os.getenv("APPDATA")), "Local", "virtualStore", "Programs Files (x86)", "n01", "n01.ini")
-        if self._file_found_at_path(installer_ini_path):
+        installer_ini_path:str = os.path.join(str(os.getenv("LOCALAPPDATA")), "virtualStore", "Programs Files (x86)", "n01", "n01.ini")
+        file_found: bool = False
+        schedule_found: bool = False
+        
+        file_found, schedule_found = self._file_found_at_path(installer_ini_path)
+        if file_found:
             self._ini_installer_path = installer_ini_path
+            if schedule_found:
+                self._ini_installer_schedule_found = True
+                
             
         # Search in the current path
         current_path:str =os.path.join(".", "n01.ini")
+        file_found, schedule_found = self._file_found_at_path(current_path)
         if self._file_found_at_path(current_path):
             self._ini_current_path = current_path
+            if schedule_found:
+                self._ini_current_path_schedule_found = True
         
     def _select_original_ini_file_path(self) -> bool:
         
+        # If there is a usable ini in the installer folder, offer to use it
         if self._ini_installer_path != "":
-            answer:bool = messagebox.askyesno(title="game settings with schedule found", message="Game settings found\nthat includes a schedule\nfrom game installer\nUse it?")
+            if self._ini_installer_schedule_found:
+                answer:bool = messagebox.askyesno(title="game settings with schedule found", 
+                                                  message="Game settings found\nthat includes a schedule\nfrom game installer\nUse it?")
+            else:
+                answer = messagebox.askyesno(title="game settings with schedule found", 
+                                             message="Game settings found\nbut does NOT includes a schedule\nfrom game installer\nUse it (and create and empty schedule)?")
             if answer:
                 self._original_ini_file_with_path = self._ini_installer_path
                 return self._original_ini_file_with_path != ""
         else:
-            messagebox.showinfo(title="game settings with schedule", message="No game settings found\nthat includes a schedule\nat installer path location")
+            messagebox.showinfo(title="game settings with schedule", 
+                                message="No game settings found\nthat includes a schedule\nat installer path location")
         
+        # If there is a usable ini in the current path, offer to use it
         if self._ini_current_path != "":
-            answer = messagebox.askyesno(title="game settings with schedule found", message="Game settings found\nthat includes a schedule\nin current path\nUse it?")
+            if self._ini_current_path_schedule_found:
+                answer = messagebox.askyesno(title="game settings with schedule found", 
+                                             message="Game settings found\nthat includes a schedule\nin current path\nUse it?")
+            else:
+                answer = messagebox.askyesno(title="game settings with schedule found", 
+                                             message="Game settings found\nbut does NOT includes a schedule\nin current path\nUse it (and create and empty schedule)?")
             if answer:
                 self._original_ini_file_with_path = self._ini_current_path
                 return self._original_ini_file_with_path != ""
         else:
-            messagebox.showinfo(title="game settings with schedule", message="No game settings found\nthat includes a schedule\nin current directory")        
+            messagebox.showinfo(title="game settings with schedule", 
+                                message="No game settings found\nthat includes a schedule\nin current directory")        
         
         # If above not found or not used, 
-        # ask for a file location
-        # starting from current directory
+        # ask for a file location,  starting from current directory
         title: str = "Select n01.ini file"
         filetypes: list[tuple[str, str]] = [("INI files", "*.ini"), ("TOML files", "*.toml"), ("All files", "*.*")]
         self._original_ini_file_with_path = askopenfilename(title=title, initialdir=".", filetypes=filetypes)
         
         if not self._has_schedule(self._original_ini_file_with_path):
-            answer = messagebox.askyesno(title="game settings loaded", message="game settings loaded\nbut no schedule in it.\nuse anyway?")
+            answer = messagebox.askyesno(title="game settings loaded", 
+                                         message="game settings loaded\nbut no schedule in it.\nuse it (and create and empty schedule)?")
             if not answer:
                 self._original_ini_file_with_path = ""
                
