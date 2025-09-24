@@ -815,46 +815,41 @@ class UI:
                 self._header[x].configure(foreground="red")
                 
             self._header[x].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady, sticky=tk.NSEW)
+                           
             x += 1
+        
     
     def _modification_table_add_header_tooltips(self) -> None:
+   
         for i in range(len(self._header)):
             tooltip: str = ""
             header_text = self._header[i]["text"].replace("\n", "_")
+            ic(header_text)
             match header_text:
                 case "set_no":
                     tooltip = "Info only:\nSet number"
-                    break
+                    ic("1" + tooltip)
+                    ToolTip(self._header[i], msg=tooltip)
+                    continue
                 case "remove?":
                     tooltip = "Deletion Selection\nTick if set to be deleted when pressing delete button"
-                    break
+                    ic(tooltip)
+                    ToolTip(self._header[i], msg=tooltip)
+                    continue
                 case _:
                     if header_text in Schedule.schedule_headers:
                         tooltip = Schedule.schedule_headers[header_text]
+                        ic(tooltip)
+                        ToolTip(self._header[i], msg=tooltip)
                     else:
                         tooltip = "n/a"
-        ToolTip(self._header[i], tooltip)
-                    
-            # ToolTip(self._header[i], 
-            #         msg=Schedule.schedule_headers[
-            #     (self._header[i]["text"]).replace("\n", "_")] if (self._header[i]["text"]).replace("\n", "_") in Schedule.schedule_headers \
-            #     else "Info only:\nSet number" if (self._header[i]["text"]).replace("\n", "_") == "set_no" \
-            #     else "Deletion Selection\nTick if set to be deleted when pressing delete button" if (self._header[i]["text"]).replace("\n", "_") == "remove?" \
-            #     else "n/a")
+                        ic(tooltip)
+                        ToolTip(self._header[i], msg=tooltip)
+
     
     def _modification_table_add_values_line(self, line_info:dict[str, str|int], row_key:int , x:int , y:int) -> None:
         
         com_level_values:list[str] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
-
-        # Add the set value (information not in the schedule)
-        # set_number_label = tk.Label(self._schedule_frame, width=self._modification_table_columns_widths["set_no"], 
-        #                                                     text=line_info["set_no"], 
-        #                                                     foreground="red",
-        #                                                     anchor=tk.CENTER,
-        #                                                     # style="value.TLabel"
-        #                                                     background="lightblue"
-        #                                                     )
-        # set_number_label.grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
         
         # Fill in the data
         first_col_filled:bool = False
@@ -1043,12 +1038,6 @@ class UI:
         
         self._modified_schedule[new_row_key] = empty_schedule_line
         self._modify_loaded_schedule(self._modified_schedule)
-        # modifiable_values_line_info: dict[str, str|int] = {}
-        # modifiable_values_line_info["set_no"] = (new_row_key) # The set value, won't be modifiable
-        # modifiable_values_line_info.update(empty_schedule_line)
-        # modifiable_values_line_info["remove?"] = 0 # Deletion selector tick mark- by default 0 = False (unticked)
-        # self._modification_table_add_values_line(modifiable_values_line_info, new_row_key, 0, new_row_key + 1)
-    
     
     def _delete_lines_from_modified_schedule(self) -> None:
         pass
