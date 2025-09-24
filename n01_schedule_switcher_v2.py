@@ -359,6 +359,8 @@ class Schedule:
         if not self._get_csv_file_path():
             return False
         
+        self._imported_schedule_sorted_by_set = {}
+        
         try:
             with open(self._schedule_csv_to_import, "r") as f:
                 reader = csv.DictReader(f)
@@ -493,15 +495,15 @@ class UI:
         # self._style = ttk.Style()
         
         # - Load schedule from ini
-        load_original_schedule = ttk.Button(self._buttons_frame, text="Load current game schedule", command=self._load_original_ini_schedule, width=buttons_width)
+        load_original_schedule = ttk.Button(self._buttons_frame, text="Load current game schedule", command=self.load_original_ini_schedule, width=buttons_width)
         # - Display original schedule
-        display_original_schedule = ttk.Button(self._buttons_frame, text="Display current game current schedule", command=self._display_original_schedule, width=buttons_width)
+        display_original_schedule = ttk.Button(self._buttons_frame, text="Display current game current schedule", command=self.display_original_schedule, width=buttons_width)
         # - Load schedule from csv
-        load_schedule_from_csv = ttk.Button(self._buttons_frame, text="Load schedule from csv", command=self._load_modified_schedule, width=buttons_width)
+        load_schedule_from_csv = ttk.Button(self._buttons_frame, text="Load schedule from csv", command=self.load_modified_schedule, width=buttons_width)
         # - Display loaded schedule
-        display_modified_schedule = ttk.Button(self._buttons_frame, text="Display loaded/modified schedule", command=self._display_modified_schedule, width=buttons_width)
+        display_modified_schedule = ttk.Button(self._buttons_frame, text="Display loaded/modified schedule", command=self.display_modified_schedule, width=buttons_width)
         # - Modify schedule
-        modify_schedule = ttk.Button(self._buttons_frame, text="Modify loaded schedule", command=self._modify_schedule, width=buttons_width)
+        modify_schedule = ttk.Button(self._buttons_frame, text="Modify loaded schedule", command=self.modify_schedule, width=buttons_width)
         # - Save schedule
         save_schedule = ttk.Button(self._buttons_frame, text="Save loaded/modified schedule", command=self._save_schedule, width=buttons_width)
         # - Set modified schedule to game
@@ -521,7 +523,7 @@ class UI:
         
         quit_app.grid(                  row=1, column=3, columnspan=1, padx=5, pady=2)
    
-    def _load_original_ini_schedule(self) -> None:
+    def load_original_ini_schedule(self) -> None:
         
         ini_file:N01Ini = N01Ini()
         ini_schedule:Schedule = Schedule()
@@ -540,15 +542,15 @@ class UI:
         if self._original_schedule is not None:
             self._original_schedule_loaded = True
             
-        self._display_original_schedule()
+        self.display_original_schedule()
 
-    def _load_modified_schedule(self) -> None:
+    def load_modified_schedule(self) -> None:
         schedule: Schedule = Schedule()
         
         schedule.import_schedule_from_csv()
         self._modified_schedule= schedule._imported_schedule_sorted_by_set
         
-        self._display_modified_schedule()
+        self.display_modified_schedule()
  
     def _display_table_add_headers(self, header_info:list[str], x:int, y:int) -> None:
         for item in header_info:
@@ -628,13 +630,13 @@ class UI:
         #     y += 1
         #     x = 0
         
-    def _display_original_schedule(self) -> None:
-        self._display_schedule(self._original_schedule)
+    def display_original_schedule(self) -> None:
+        self._create_display_schedule_table(self._original_schedule)
 
-    def _display_modified_schedule(self) -> None:
-        self._display_schedule(self._modified_schedule)
+    def display_modified_schedule(self) -> None:
+        self._create_display_schedule_table(self._modified_schedule)
         
-    def _display_schedule(self, schedule:dict[int, dict[str, str|int]] = {}) -> None:
+    def _create_display_schedule_table(self, schedule:dict[int, dict[str, str|int]] = {}) -> None:
         
         # check if a schedule is loaded (not empty)
         if not bool(schedule):
@@ -797,8 +799,8 @@ class UI:
                 # textbox = ttk.Entry(original_schedule_frame)
                 # textbox.insert(0, str(self._original_schedule[row_key][col_key]))
     
-    def _modify_schedule(self) -> None:
-        self._modify_loaded_schedule(self._modified_schedule)
+    def modify_schedule(self) -> None:
+        self._create_modify_loaded_schedule_table(self._modified_schedule)
     
     def _modification_table_add_headers(self, header_info: list[str], x:int, y:int) -> None:
         for item in header_info:
@@ -818,35 +820,28 @@ class UI:
                            
             x += 1
         
-    
     def _modification_table_add_header_tooltips(self) -> None:
    
         for i in range(len(self._header)):
             tooltip: str = ""
             header_text = self._header[i]["text"].replace("\n", "_")
-            ic(header_text)
             match header_text:
                 case "set_no":
                     tooltip = "Info only:\nSet number"
-                    ic("1" + tooltip)
                     ToolTip(self._header[i], msg=tooltip)
                     continue
                 case "remove?":
                     tooltip = "Deletion Selection\nTick if set to be deleted when pressing delete button"
-                    ic(tooltip)
                     ToolTip(self._header[i], msg=tooltip)
                     continue
                 case _:
                     if header_text in Schedule.schedule_headers:
                         tooltip = Schedule.schedule_headers[header_text]
-                        ic(tooltip)
                         ToolTip(self._header[i], msg=tooltip)
                     else:
                         tooltip = "n/a"
-                        ic(tooltip)
                         ToolTip(self._header[i], msg=tooltip)
 
-    
     def _modification_table_add_values_line(self, line_info:dict[str, str|int], row_key:int , x:int , y:int) -> None:
         
         com_level_values:list[str] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
@@ -1017,7 +1012,7 @@ class UI:
                 case _:
                     continue                                        
     
-    def _modification_table_add_new_line(self) -> None:
+    def modification_table_add_new_line(self) -> None:
         
         new_row_key = len(self._modified_schedule) + 1
         empty_schedule_line: dict[str, str|int] = {"start_score": 0,
@@ -1037,12 +1032,25 @@ class UI:
                                                    }
         
         self._modified_schedule[new_row_key] = empty_schedule_line
-        self._modify_loaded_schedule(self._modified_schedule)
+        self.modify_schedule()
     
-    def _delete_lines_from_modified_schedule(self) -> None:
-        pass
-     
-    def _modify_loaded_schedule(self, schedule:dict[int, dict[str, str|int]]) -> None:
+    def modification_table_delete_selected_lines(self) -> None:
+
+        for choice in range(len(self._delete_selector_var)):
+            if self._delete_selector_var[choice].get():
+                self._modified_schedule.pop(choice)
+
+        new_index:int = 0
+        updated_schedule: dict = {}
+        for key, value in self._modified_schedule.items():
+            updated_schedule[new_index] = value
+            new_index += 1
+
+        self._modified_schedule = updated_schedule
+        self.modify_schedule()
+        
+        
+    def _create_modify_loaded_schedule_table(self, schedule:dict[int, dict[str, str|int]]) -> None:
         
         if schedule is None:
             messagebox.showinfo("request schedule not loaded")
@@ -1143,8 +1151,8 @@ class UI:
         #         )       
         
         # add Add and Remove buttons # - Load schedule from ini
-        self._add_button = ttk.Button(self._schedule_frame, text="Add a line", command=self._modification_table_add_new_line, width=20)
-        self._delete_button = ttk.Button(self._schedule_frame, text="Delete selected lines", command=self._delete_lines_from_modified_schedule, width=20)
+        self._add_button = ttk.Button(self._schedule_frame, text="Add a line", command=self.modification_table_add_new_line, width=20)
+        self._delete_button = ttk.Button(self._schedule_frame, text="Delete selected lines", command=self.modification_table_delete_selected_lines, width=20)
         
         self._add_button.grid(row = y, column=4, columnspan=4, pady=self._modify_pady)
         self._delete_button.grid(row = y, column=8, columnspan=4)
