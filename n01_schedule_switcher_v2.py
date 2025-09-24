@@ -421,7 +421,7 @@ class UI:
     _original_schedule_loaded:bool = False 
     
     _modified_schedule:dict[int, dict[str, str|int]] = {}
-    
+    _modification_table_columns_widths:dict[str, int] = {}
     
     def __init__(self):
         # initialise Tk window
@@ -430,14 +430,54 @@ class UI:
         # display the window
         self._window.title("N01 Schedule Switcher")
         self._window.configure(background="DarKGreen")
-        self._window.minsize(800,600)
+        self._window.minsize(900,600)
         self._window.maxsize(1920,1080)
-        self._window.config(width=800, height=600)    
+        self._window.config(width=900, height=600)    
         
-        self._buttons_frame = tk.Frame(self._window, bg="yellow", width=790)
+        self._buttons_frame = tk.Frame(self._window, bg="yellow", width=890)
         self._schedule_frame = tk.Frame(self._window, bg="lightblue")
     
+        self._modification_table_columns_widths = {
+            "set_no": 3,
+            "start_score": 6,
+            "round_limit": 6,
+            "round": 6,
+            "max_leg": 4,
+            "best_of": 4,
+            "change_first": 7,
+            "p1_name": 10,
+            "p1_start_score": 6,
+            "p1_com": 4,
+            "p1_com_level": 5,
+            "p2_name": 10,
+            "p2_start_score": 6,
+            "p2_com": 4,
+            "p2_com_level": 5,
+            "remove?": 8,
+        }
+
+        self._load_styles()
+        
         self._generate_buttons_frame()    
+
+    def _load_styles(self) -> None:
+        self._style = ttk.Style()
+        # Buttons frame styles
+        self._style.configure("quit.TButton", background="red", justify=tk.CENTER, anchor=tk.CENTER, bordercolor="gray")
+        
+        # Schedule frame styles
+        self._style.configure("header.TLabel", 
+                              background="lightblue",)  
+        
+        # display schedule styles
+        self._style.configure("value.TLabel",
+                              background="white", )
+        
+        self._style.configure("Custom.TCheckbutton",
+                            #   anchor=tk.CENTER, 
+                              background="lightblue")
+
+        
         
     def _generate_buttons_frame(self) -> None:
 
@@ -446,9 +486,8 @@ class UI:
         self._buttons_frame.place(x = 10, y = 10)
         
         buttons_width:int = 30
-        self._style = ttk.Style()
+        # self._style = ttk.Style()
         
-        self._style.configure("quit.TButton", background="red", justify=tk.CENTER, anchor=tk.CENTER, bordercolor="gray")
         # - Load schedule from ini
         load_original_schedule = ttk.Button(self._buttons_frame, text="Load current game schedule", command=self._load_original_ini_schedule, width=buttons_width)
         # - Display original schedule
@@ -515,8 +554,9 @@ class UI:
         
     def _display_schedule(self, schedule:dict[int, dict[str, str|int]] = {}) -> None:
         
-        if schedule is None:
-            messagebox.showinfo("request schedule not loaded")
+        # check if a schedule is loaded (not empty)
+        if not bool(schedule):
+            messagebox.showinfo(title="display loaded schedule", message="No schedule loaded")
             return
 
         if self._schedule_frame is not None:
@@ -559,20 +599,11 @@ class UI:
             "p2_com": 5,
             "p2_com_level": 5,
         }
-        
-        # Define the style for the headers and for the values
-        # self._style = ttk.Style()
-        
 
         # Generate a table of textboxes to display the original schedule
         x = 0
         y = 0
-        
-        # Create a label for each header in the schedule
-        self._style.configure("header.TLabel", 
-                background="lightblue", 
-                )       
-        
+                
         header = ttk.Label(self._schedule_frame, 
                     text="set\nno", 
                     width=3,
@@ -598,10 +629,6 @@ class UI:
         x = 0
         
         # Create a textbox for each value in the schedule
-        self._style.configure("value.TLabel",
-                background="white", 
-                )
-        
         for row_key in schedule:
             textbox = ttk.Label(self._schedule_frame, 
                     text=str(y), 
@@ -637,7 +664,235 @@ class UI:
     
     def _modify_schedule(self) -> None:
         self._modify_loaded_schedule(self._modified_schedule)
+    
+    def _add_line_to_modified_schedule(self) -> None:
+        pass
+    
+    def _modification_table_add_headers(self, header_info: list[str], x:int, y:int) -> None:
+        for item in header_info:
+            self._header[x] = ttk.Label(self._schedule_frame, 
+                                        text=item.replace("_", "\n"), 
+                                        width=self._modification_table_columns_widths[item],
+                                        justify=tk.CENTER,  
+                                        anchor=tk.CENTER,   
+                                        # foreground="red",
+                                        style="header.TLabel"
+                                        )
+            
+            if item == "set_no" or item == "remove?":
+                self._header[x].configure(foreground="red")
+                
+            self._header[x].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady, sticky=tk.NSEW)
+            x += 1
+    
+    def _modification_table_add_header_tooltips(self) -> None:
+        for i in range(len(self._header)):
+            tooltip: str = ""
+            header_text = self._header[i]["text"].replace("\n", "_")
+            match header_text:
+                case "set_no":
+                    tooltip = "Info only:\nSet number"
+                    break
+                case "remove?":
+                    tooltip = "Deletion Selection\nTick if set to be deleted when pressing delete button"
+                    break
+                case _:
+                    if header_text in Schedule.schedule_headers:
+                        tooltip = Schedule.schedule_headers[header_text]
+                    else:
+                        tooltip = "n/a"
+        ToolTip(self._header[i], tooltip)
+                    
+            # ToolTip(self._header[i], 
+            #         msg=Schedule.schedule_headers[
+            #     (self._header[i]["text"]).replace("\n", "_")] if (self._header[i]["text"]).replace("\n", "_") in Schedule.schedule_headers \
+            #     else "Info only:\nSet number" if (self._header[i]["text"]).replace("\n", "_") == "set_no" \
+            #     else "Deletion Selection\nTick if set to be deleted when pressing delete button" if (self._header[i]["text"]).replace("\n", "_") == "remove?" \
+            #     else "n/a")
+    
+    def _modification_table_add_values_line(self, line_info:dict[str, str|int], row_key:int , x:int , y:int) -> None:
         
+        com_level_values:list[str] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+
+        # Add the set value (information not in the schedule)
+        # set_number_label = tk.Label(self._schedule_frame, width=self._modification_table_columns_widths["set_no"], 
+        #                                                     text=line_info["set_no"], 
+        #                                                     foreground="red",
+        #                                                     anchor=tk.CENTER,
+        #                                                     # style="value.TLabel"
+        #                                                     background="lightblue"
+        #                                                     )
+        # set_number_label.grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+        
+        # Fill in the data
+        first_col_filled:bool = False
+        
+        for col_key in line_info:
+            item_col_width:int = self._modification_table_columns_widths[col_key]
+            item_value:str|int = line_info[col_key]
+            if first_col_filled:
+                x += 1
+         
+            match col_key:
+                
+                case "set_no":
+                    set_number_label = tk.Label(self._schedule_frame, width=item_col_width, 
+                                                            text=item_value, 
+                                                            foreground="red",
+                                                            anchor=tk.CENTER,
+                                                            # style="value.TLabel"
+                                                            background="lightblue"
+                                                            )
+                    set_number_label.grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+                    first_col_filled = True
+                    continue
+                
+                case "start_score":
+                    self._start_score_spinbox_var[row_key] = tk.IntVar()
+                    self._start_score_spinbox_var[row_key].set(int(item_value))
+                    self._start_score_spinbox[row_key] = ttk.Spinbox(self._schedule_frame, width=item_col_width, 
+                                                            textvariable=self._start_score_spinbox_var[row_key], 
+                                                            from_=1, to=1001, increment=2)
+                    self._start_score_spinbox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+                    continue
+                
+                case "round_limit":
+                    self._round_limit_checkbutton_var[row_key] = tk.BooleanVar()
+                    self._round_limit_checkbutton_var[row_key].set(bool(int(item_value)))
+                    self._round_limit_checkbutton[row_key] = ttk.Checkbutton(self._schedule_frame, 
+                                                            variable=self._round_limit_checkbutton_var[row_key], 
+                                                            onvalue=True, offvalue=False, 
+                                                            style="Custom.TCheckbutton")
+
+                    self._round_limit_checkbutton[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+                    continue
+                
+                case "round":
+                    self._round_spinbox_var[row_key] = tk.IntVar()
+                    self._round_spinbox_var[row_key].set(int(item_value))
+                    self._round_spinbox[row_key] = ttk.Spinbox(self._schedule_frame, width=item_col_width, 
+                                                            textvariable=self._round_spinbox_var[row_key], 
+                                                            from_=1, to=100, increment=1)
+                    self._round_spinbox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+                    continue
+                    
+                case "max_leg":
+                    self._max_leg_spinbox_var[row_key] = tk.IntVar()
+                    self._max_leg_spinbox_var[row_key].set(int(item_value))
+                    self._max_leg_spinbox[row_key] = ttk.Spinbox(self._schedule_frame, width=item_col_width, 
+                                                            textvariable=self._max_leg_spinbox_var[row_key], 
+                                                            from_=1, to=100, increment=1)
+                    self._max_leg_spinbox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+                    continue
+                    
+                case "best_of":
+                    self._best_of_checkbutton_var[row_key] = tk.BooleanVar()
+                    self._best_of_checkbutton_var[row_key].set(bool(int(item_value)))
+                    self._best_of_checkbutton[row_key] = ttk.Checkbutton(self._schedule_frame, 
+                                                            variable=self._best_of_checkbutton_var[row_key], 
+                                                            onvalue=True, offvalue=False, 
+                                                            style="Custom.TCheckbutton")
+                    self._best_of_checkbutton[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+                    continue
+                    
+                case "change_first":
+                    self._change_first_checkbutton_var[row_key] = tk.BooleanVar()
+                    self._change_first_checkbutton_var[row_key].set(bool(int(item_value)))
+                    self._change_first_checkbutton[row_key] = ttk.Checkbutton(self._schedule_frame, 
+                                                            variable=self._change_first_checkbutton_var[row_key], 
+                                                            onvalue=True, offvalue=False, 
+                                                            style="Custom.TCheckbutton")
+                    self._change_first_checkbutton[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+                    continue
+                    
+                case "p1_name":
+                    self._p1_name_entry_var[row_key] = tk.StringVar()
+                    self._p1_name_entry_var[row_key].set(str(item_value))
+                    self._p1_name_entry[row_key] = ttk.Entry(self._schedule_frame, width=item_col_width, 
+                                                            textvariable=self._p1_name_entry_var[row_key])
+                    self._p1_name_entry[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+                    continue
+
+                case "p1_start_score":
+                    self._p1_start_score_spinbox_var[row_key] = tk.IntVar()
+                    self._p1_start_score_spinbox_var[row_key].set(int(item_value))
+                    self._p1_start_score_spinbox[row_key] = ttk.Spinbox(self._schedule_frame, width=item_col_width, 
+                                                            textvariable=self._p1_start_score_spinbox_var[row_key], 
+                                                            from_=1, to=1001, increment=2)
+                    self._p1_start_score_spinbox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+                    continue
+
+                case "p1_com":
+                    self._p1_com_checkbutton_var[row_key] = tk.BooleanVar()
+                    self._p1_com_checkbutton_var[row_key].set(bool(int(item_value)))
+                    self._p1_com_checkbutton[row_key] = ttk.Checkbutton(self._schedule_frame, 
+                                                            variable=self._p1_com_checkbutton_var[row_key], 
+                                                            onvalue=True, offvalue=False,  
+                                                            style="Custom.TCheckbutton")
+                    self._p1_com_checkbutton[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)                    
+                    continue
+
+                case "p1_com_level":
+                    self._p1_com_level_spinbox_var[row_key] = tk.IntVar()
+                    self._p1_com_level_spinbox_var[row_key].set(int(item_value))
+                    self._p1_com_level_spinbox[row_key] = ttk.Spinbox(self._schedule_frame, width=item_col_width, 
+                                                            textvariable=self._p1_com_level_spinbox_var[row_key], 
+                                                            from_=1, to=12, increment=1)
+                    self._p1_com_level_spinbox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+                    continue
+                    
+                case "p2_name":
+                    self._p2_name_entry_var[row_key] = tk.StringVar()
+                    self._p2_name_entry_var[row_key].set(str(item_value))
+                    self._p2_name_entry[row_key] = ttk.Entry(self._schedule_frame, width=item_col_width, 
+                                                            textvariable=self._p2_name_entry_var[row_key])
+                    self._p2_name_entry[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+                    continue
+
+                case "p2_start_score":
+                    self._p2_start_score_spinbox_var[row_key] = tk.StringVar()
+                    self._p2_start_score_spinbox_var[row_key].set(str(item_value))
+                    self._p2_start_score_spinbox[row_key] = ttk.Spinbox(self._schedule_frame, width=item_col_width, 
+                                                            textvariable=self._p2_start_score_spinbox_var[row_key], 
+                                                            from_=1, to=1001, increment=2)
+                    self._p2_start_score_spinbox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+                    continue
+
+                case "p2_com":
+                    self._p2_com_checkbutton_var[row_key] = tk.BooleanVar()
+                    self._p2_com_checkbutton_var[row_key].set(bool(int(item_value)))
+                    self._p2_com_checkbutton[row_key] = ttk.Checkbutton(self._schedule_frame, 
+                                                            variable=self._p2_com_checkbutton_var[row_key], 
+                                                            onvalue=True, offvalue=False, 
+                                                            style="Custom.TCheckbutton")
+                    self._p2_com_checkbutton[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)                    
+                    continue
+
+                case "p2_com_level":
+                    self._p2_com_level_combobox_var[row_key] = tk.IntVar()
+                    self._p2_com_level_combobox_var[row_key].set(0 if int(line_info["p2_com"]) == 0 else int(item_value))
+                    self._p2_com_level_combobox[row_key] = ttk.Combobox(self._schedule_frame, width=item_col_width,
+                                                            values=com_level_values, 
+                                                            textvariable=self._p2_com_level_combobox_var[row_key])
+                    self._p2_com_level_combobox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+                    continue
+
+                case "remove?":
+                    self._delete_selector_var[row_key] = tk.BooleanVar()
+                    self._delete_selector_var[row_key].set(False)
+                    self._delete_selector[row_key] = ttk.Checkbutton(self._schedule_frame, 
+                                                        variable=self._delete_selector_var[row_key], 
+                                                        onvalue=True, offvalue=False, 
+                                                        style="Custom.TCheckbutton")
+                    self._delete_selector[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+                    continue
+
+                case _:
+                    continue                                        
+            
+    def _delete_lines_from_modified_schedule(self) -> None:
+        pass
+     
     def _modify_loaded_schedule(self, schedule:dict[int, dict[str, str|int]]) -> None:
         
         if schedule is None:
@@ -668,29 +923,29 @@ class UI:
         
         # Pre-define the widths of the table cells
         # Note that this this does not adapt if font is face or size is changed
-        columns_width = {
-            "start_score": 6,
-            "round_limit": 6,
-            "round": 6,
-            "max_leg": 4,
-            "best_of": 4,
-            "change_first": 7,
-            "p1_name": 10,
-            "p1_start_score": 6,
-            "p1_com": 5,
-            "p1_com_level": 5,
-            "p2_name": 10,
-            "p2_start_score": 6,
-            "p2_com": 5,
-            "p2_com_level": 5,
-        }
+        # columns_width = {
+        #     "start_score": 6,
+        #     "round_limit": 6,
+        #     "round": 6,
+        #     "max_leg": 4,
+        #     "best_of": 4,
+        #     "change_first": 7,
+        #     "p1_name": 10,
+        #     "p1_start_score": 6,
+        #     "p1_com": 5,
+        #     "p1_com_level": 5,
+        #     "p2_name": 10,
+        #     "p2_start_score": 6,
+        #     "p2_com": 5,
+        #     "p2_com_level": 5,
+        # }
         
-        com_level_values:list[str] = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+        # com_level_values:list[str] = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
         
         
         # Define the style for the headers and for the values
         # style:ttk.Style = ttk.Style()
-        self._style.configure("Custom.TCheckbutton", background="lightblue")
+        # self._style.configure("Custom.TCheckbutton", background="lightblue")
         
         # Set the table variables
         self._start_score_spinbox: dict[int, ttk.Spinbox] = {}
@@ -723,6 +978,9 @@ class UI:
         self._p2_com_level_combobox_var: dict[int, tk.IntVar] = {}
         self._header: dict[int, ttk.Label] = {}
         
+        self._delete_selector: dict[int, ttk.Checkbutton] = {}
+        self._delete_selector_var: dict[int, tk.BooleanVar] = {}
+        
         self._modify_padx:int = 2
         self._modify_pady:int = 2
         
@@ -731,159 +989,208 @@ class UI:
         y = 0
         
         # Create a label for each header in the schedule
-        self._style.configure("header.TLabel", 
-                background="lightblue", 
-                )       
+        # self._style.configure("header.TLabel", 
+        #         background="lightblue", 
+        #         )       
         
-        # Add a column header for a value that does not exist in the schedule
-        self._header[x] = ttk.Label(self._schedule_frame, 
-                    text="set\nno", 
-                    width=3,
-                    justify=tk.CENTER,  
-                    anchor=tk.CENTER,   
-                    foreground="red",
-                    style="header.TLabel"
-                    )
-        self._header[x].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
-        x += 1
-
-        # Add the headers
-        for key, _ in schedule[0].items():
-            self._header[x] = ttk.Label(self._schedule_frame, 
-                               text=str(key).replace("_", "\n"), 
-                               width=columns_width[key],
-                               justify=tk.CENTER,  
-                               anchor=tk.CENTER,
-                               style="header.TLabel"
-                               )
-            self._header[x].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
-            x += 1
+        # add Add and Remove buttons # - Load schedule from ini
+        self._add_button = ttk.Button(self._schedule_frame, text="Add a line", command=self._add_line_to_modified_schedule, width=20)
+        self._delete_button = ttk.Button(self._schedule_frame, text="Delete selected lines", command=self._delete_lines_from_modified_schedule, width=20)
+        
+        self._add_button.grid(row = y, column=4, columnspan=4, pady=self._modify_pady)
+        self._delete_button.grid(row = y, column=8, columnspan=4)
         y += 1
         
+        header_info: list[str] = []
+        header_info.append("set_no")
+        header_info.extend(schedule[0].keys())
+        header_info.append("remove?")
+        
+        self._modification_table_add_headers(header_info, x, y)
+        
+        # # Add a column header for a value that does not exist in the schedule
+        # self._header[x] = ttk.Label(self._schedule_frame, 
+        #             text="set\nno", 
+        #             width=3,
+        #             justify=tk.CENTER,  
+        #             anchor=tk.CENTER,   
+        #             foreground="red",
+        #             style="header.TLabel"
+        #             )
+        # self._header[x].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+        # x += 1
+
+        # # Add the headers
+        # for key, _ in schedule[0].items():
+        #     self._header[x] = ttk.Label(self._schedule_frame, 
+        #                        text=str(key).replace("_", "\n"), 
+        #                        width=columns_width[key],
+        #                        justify=tk.CENTER,  
+        #                        anchor=tk.CENTER,
+        #                        style="header.TLabel"
+        #                        )
+        #     self._header[x].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+        #     x += 1
+        
+        #         # Add a column header for a value that does not exist in the schedule
+        # self._header[x] = ttk.Label(self._schedule_frame, 
+        #             text="remove?", 
+        #             width=7,
+        #             justify=tk.CENTER,  
+        #             anchor=tk.CENTER,   
+        #             foreground="red",
+        #             style="header.TLabel"
+        #             )
+        # self._header[x].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+        
+        # x += 1
+        
         # Add tooltips on the headers
-        for i in range(x):
-            ToolTip(self._header[i], msg=Schedule.schedule_headers[(self._header[i]["text"]).replace("\n", "_")] if (self._header[i]["text"]).replace("\n", "_") in Schedule.schedule_headers else "n/a")
+        self._modification_table_add_header_tooltips()
+        # for i in range(x):
+        #     ToolTip(self._header[i], msg=Schedule.schedule_headers[
+        #         (self._header[i]["text"]).replace("\n", "_")] if (self._header[i]["text"]).replace("\n", "_") in Schedule.schedule_headers \
+        #         else "Info only:\nSet number" if (self._header[i]["text"]).replace("\n", "_") == "set_no" \
+        #         else "Deletion Selection\nTick if set to be deleted when pressing delete button" if (self._header[i]["text"]).replace("\n", "_") == "remove?" \
+        #         else "n/a")
         
         x = 0
-        
+        y += 1
         
         for row_key in schedule:
-            # Add the set value (information not in the schedule)
-            textbox = tk.Label(self._schedule_frame, 
-                    text=str(y), 
-                    width=3, 
-                    foreground="red",
-                    anchor=tk.CENTER,
-                    # style="value.TLabel"
-                    background="lightblue"
-                    )
-            textbox.grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
-            x += 1
+            modifiable_values_line_info: dict[str, str|int] = {}
+            modifiable_values_line_info["set_no"] = (y-1) # The set value, won't be modifiable
+            modifiable_values_line_info.update(schedule[row_key])
+            modifiable_values_line_info["remove?"] = 0 # Deletion selector tick mark- by default 0 = False (unticked)
             
-            # Fill in the data
-            for col_key in schedule[row_key]:
-                if col_key == "start_score":
-                    self._start_score_spinbox_var[row_key] = tk.IntVar()
-                    self._start_score_spinbox_var[row_key].set(int(schedule[row_key][col_key]))
-                    self._start_score_spinbox[row_key] = ttk.Spinbox(self._schedule_frame, width=columns_width[col_key], 
-                                                              textvariable=self._start_score_spinbox_var[row_key], from_=1, to=1001, increment=2)
-                    self._start_score_spinbox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
-                    
-                if col_key == "round_limit":
-                    self._round_limit_checkbutton_var[row_key] = tk.BooleanVar()
-                    self._round_limit_checkbutton_var[row_key].set(bool(int(schedule[row_key][col_key])))
-                    self._round_limit_checkbutton[row_key] = ttk.Checkbutton(self._schedule_frame, style="Custom.TCheckbutton", width=1,
-                                                                      variable=self._round_limit_checkbutton_var[row_key], onvalue=True, offvalue=False)
-
-                    self._round_limit_checkbutton[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady, sticky=tk.NSEW)
-                    
-                if col_key == "round":
-                    self._round_spinbox_var[row_key] = tk.IntVar()
-                    self._round_spinbox_var[row_key].set(int(schedule[row_key][col_key]))
-                    self._round_spinbox[row_key] = ttk.Spinbox(self._schedule_frame, width=columns_width[col_key], 
-                                                        textvariable=self._round_spinbox_var[row_key], from_=1, to=100, increment=1)
-                    self._round_spinbox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
-                    
-                if col_key == "max_leg":
-                    self._max_leg_spinbox_var[row_key] = tk.IntVar()
-                    self._max_leg_spinbox_var[row_key].set(int(schedule[row_key][col_key]))
-                    self._max_leg_spinbox[row_key] = ttk.Spinbox(self._schedule_frame, width=columns_width[col_key], 
-                                                          textvariable=self._max_leg_spinbox_var[row_key], from_=1, to=100, increment=1)
-                    self._max_leg_spinbox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
-                    
-                if col_key == "best_of":
-                    self._best_of_checkbutton_var[row_key] = tk.BooleanVar()
-                    self._best_of_checkbutton_var[row_key].set(bool(int(schedule[row_key][col_key])))
-                    self._best_of_checkbutton[row_key] = ttk.Checkbutton(self._schedule_frame, style="Custom.TCheckbutton", width=1,
-                                                                  variable=self._best_of_checkbutton_var[row_key], onvalue=True, offvalue=False)
-                    self._best_of_checkbutton[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady, sticky=tk.NSEW)
-                    
-                if col_key == "change_first":
-                    self._change_first_checkbutton_var[row_key] = tk.BooleanVar()
-                    self._change_first_checkbutton_var[row_key].set(bool(int(schedule[row_key][col_key])))
-                    self._change_first_checkbutton[row_key] = ttk.Checkbutton(self._schedule_frame, style="Custom.TCheckbutton", width=1,
-                                                                       variable=self._change_first_checkbutton_var[row_key], onvalue=True, offvalue=False)
-                    self._change_first_checkbutton[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady, sticky=tk.NSEW)
-                    
-                if col_key == "p1_name":
-                    self._p1_name_entry_var[row_key] = tk.StringVar()
-                    self._p1_name_entry_var[row_key].set(str(schedule[row_key][col_key]))
-                    self._p1_name_entry[row_key] = ttk.Entry(self._schedule_frame, width=columns_width[col_key], 
-                                                      textvariable=self._p1_name_entry_var[row_key])
-                    self._p1_name_entry[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
-
-                if col_key == "p1_start_score":
-                    self._p1_start_score_spinbox_var[row_key] = tk.IntVar()
-                    self._p1_start_score_spinbox_var[row_key].set(int(schedule[row_key][col_key]))
-                    self._p1_start_score_spinbox[row_key] = ttk.Spinbox(self._schedule_frame, width=columns_width[col_key], 
-                                                   textvariable=self._p1_start_score_spinbox_var[row_key], from_=1, to=1001, increment=2)
-                    self._p1_start_score_spinbox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
-
-                if col_key == "p1_com":
-                    self._p1_com_checkbutton_var[row_key] = tk.BooleanVar()
-                    self._p1_com_checkbutton_var[row_key].set(bool(int(schedule[row_key][col_key])))
-                    self._p1_com_checkbutton[row_key] = ttk.Checkbutton(self._schedule_frame,  style="Custom.TCheckbutton",
-                                                           variable=self._p1_com_checkbutton_var[row_key], onvalue=True, offvalue=False)
-                    self._p1_com_checkbutton[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady, sticky=tk.NSEW)                    
-
-                if col_key == "p1_com_level":
-                    self._p1_com_level_spinbox_var[row_key] = tk.IntVar()
-                    self._p1_com_level_spinbox_var[row_key].set(int(schedule[row_key][col_key]))
-                    self._p1_com_level_spinbox[row_key] = ttk.Spinbox(self._schedule_frame, width=columns_width[col_key], 
-                                     textvariable=self._p1_com_level_spinbox_var[row_key], from_=1, to=12, increment=1)
-                    self._p1_com_level_spinbox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
-                    
-                if col_key == "p2_name":
-                    self._p2_name_entry_var[row_key] = tk.StringVar()
-                    self._p2_name_entry_var[row_key].set(str(schedule[row_key][col_key]))
-                    self._p2_name_entry[row_key] = ttk.Entry(self._schedule_frame, width=columns_width[col_key], 
-                                                      textvariable=self._p2_name_entry_var[row_key])
-                    self._p2_name_entry[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
-
-                if col_key == "p2_start_score":
-                    self._p2_start_score_spinbox_var[row_key] = tk.StringVar()
-                    self._p2_start_score_spinbox_var[row_key].set(str(schedule[row_key][col_key]))
-                    self._p2_start_score_spinbox[row_key] = ttk.Spinbox(self._schedule_frame, width=columns_width[col_key], 
-                                                   textvariable=self._p2_start_score_spinbox_var[row_key], from_=1, to=1001, increment=2)
-                    self._p2_start_score_spinbox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
-
-                if col_key == "p2_com":
-                    self._p2_com_checkbutton_var[row_key] = tk.BooleanVar()
-                    self._p2_com_checkbutton_var[row_key].set(bool(int(schedule[row_key][col_key])))
-                    self._p2_com_checkbutton[row_key] = ttk.Checkbutton(self._schedule_frame, style="Custom.TCheckbutton",
-                                                           variable=self._p2_com_checkbutton_var[row_key], onvalue=True, offvalue=False)
-                    self._p2_com_checkbutton[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady, sticky=tk.NSEW)                    
-
-                if col_key == "p2_com_level":
-                    self._p2_com_level_combobox_var[row_key] = tk.IntVar()
-                    self._p2_com_level_combobox_var[row_key].set(0 if int(schedule[row_key]["p2_com"]) == 0 else int(schedule[row_key][col_key]))
-                    self._p2_com_level_combobox[row_key] = ttk.Combobox(self._schedule_frame, width=columns_width[col_key],
-                                                                  values=com_level_values, textvariable=self._p2_com_level_combobox_var[row_key])
-                    self._p2_com_level_combobox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
-                                        
-                x += 1
-            y += 1
+            self._modification_table_add_values_line(modifiable_values_line_info, row_key, x, y)
             x = 0
+            y += 1
+        
+        # for row_key in schedule:
+        #     # Add the set value (information not in the schedule)
+        #     textbox = tk.Label(self._schedule_frame, 
+        #             text=str(y-1), 
+        #             width=3, 
+        #             foreground="red",
+        #             anchor=tk.CENTER,
+        #             # style="value.TLabel"
+        #             background="lightblue"
+        #             )
+        #     textbox.grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+        #     x += 1
+            
+        #     # Fill in the data
+        #     for col_key in schedule[row_key]:
+        #         if col_key == "start_score":
+        #             self._start_score_spinbox_var[row_key] = tk.IntVar()
+        #             self._start_score_spinbox_var[row_key].set(int(schedule[row_key][col_key]))
+        #             self._start_score_spinbox[row_key] = ttk.Spinbox(self._schedule_frame, width=columns_width[col_key], 
+        #                                                       textvariable=self._start_score_spinbox_var[row_key], from_=1, to=1001, increment=2)
+        #             self._start_score_spinbox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+                    
+        #         if col_key == "round_limit":
+        #             self._round_limit_checkbutton_var[row_key] = tk.BooleanVar()
+        #             self._round_limit_checkbutton_var[row_key].set(bool(int(schedule[row_key][col_key])))
+        #             self._round_limit_checkbutton[row_key] = ttk.Checkbutton(self._schedule_frame, style="Custom.TCheckbutton", width=1,
+        #                                                               variable=self._round_limit_checkbutton_var[row_key], onvalue=True, offvalue=False)
+
+        #             self._round_limit_checkbutton[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady, sticky=tk.NSEW)
+                    
+        #         if col_key == "round":
+        #             self._round_spinbox_var[row_key] = tk.IntVar()
+        #             self._round_spinbox_var[row_key].set(int(schedule[row_key][col_key]))
+        #             self._round_spinbox[row_key] = ttk.Spinbox(self._schedule_frame, width=columns_width[col_key], 
+        #                                                 textvariable=self._round_spinbox_var[row_key], from_=1, to=100, increment=1)
+        #             self._round_spinbox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+                    
+        #         if col_key == "max_leg":
+        #             self._max_leg_spinbox_var[row_key] = tk.IntVar()
+        #             self._max_leg_spinbox_var[row_key].set(int(schedule[row_key][col_key]))
+        #             self._max_leg_spinbox[row_key] = ttk.Spinbox(self._schedule_frame, width=columns_width[col_key], 
+        #                                                   textvariable=self._max_leg_spinbox_var[row_key], from_=1, to=100, increment=1)
+        #             self._max_leg_spinbox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+                    
+        #         if col_key == "best_of":
+        #             self._best_of_checkbutton_var[row_key] = tk.BooleanVar()
+        #             self._best_of_checkbutton_var[row_key].set(bool(int(schedule[row_key][col_key])))
+        #             self._best_of_checkbutton[row_key] = ttk.Checkbutton(self._schedule_frame, style="Custom.TCheckbutton", width=1,
+        #                                                           variable=self._best_of_checkbutton_var[row_key], onvalue=True, offvalue=False)
+        #             self._best_of_checkbutton[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady, sticky=tk.NSEW)
+                    
+        #         if col_key == "change_first":
+        #             self._change_first_checkbutton_var[row_key] = tk.BooleanVar()
+        #             self._change_first_checkbutton_var[row_key].set(bool(int(schedule[row_key][col_key])))
+        #             self._change_first_checkbutton[row_key] = ttk.Checkbutton(self._schedule_frame, style="Custom.TCheckbutton", width=1,
+        #                                                                variable=self._change_first_checkbutton_var[row_key], onvalue=True, offvalue=False)
+        #             self._change_first_checkbutton[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady, sticky=tk.NSEW)
+                    
+        #         if col_key == "p1_name":
+        #             self._p1_name_entry_var[row_key] = tk.StringVar()
+        #             self._p1_name_entry_var[row_key].set(str(schedule[row_key][col_key]))
+        #             self._p1_name_entry[row_key] = ttk.Entry(self._schedule_frame, width=columns_width[col_key], 
+        #                                               textvariable=self._p1_name_entry_var[row_key])
+        #             self._p1_name_entry[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+
+        #         if col_key == "p1_start_score":
+        #             self._p1_start_score_spinbox_var[row_key] = tk.IntVar()
+        #             self._p1_start_score_spinbox_var[row_key].set(int(schedule[row_key][col_key]))
+        #             self._p1_start_score_spinbox[row_key] = ttk.Spinbox(self._schedule_frame, width=columns_width[col_key], 
+        #                                            textvariable=self._p1_start_score_spinbox_var[row_key], from_=1, to=1001, increment=2)
+        #             self._p1_start_score_spinbox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+
+        #         if col_key == "p1_com":
+        #             self._p1_com_checkbutton_var[row_key] = tk.BooleanVar()
+        #             self._p1_com_checkbutton_var[row_key].set(bool(int(schedule[row_key][col_key])))
+        #             self._p1_com_checkbutton[row_key] = ttk.Checkbutton(self._schedule_frame,  style="Custom.TCheckbutton",
+        #                                                    variable=self._p1_com_checkbutton_var[row_key], onvalue=True, offvalue=False)
+        #             self._p1_com_checkbutton[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady, sticky=tk.NSEW)                    
+
+        #         if col_key == "p1_com_level":
+        #             self._p1_com_level_spinbox_var[row_key] = tk.IntVar()
+        #             self._p1_com_level_spinbox_var[row_key].set(int(schedule[row_key][col_key]))
+        #             self._p1_com_level_spinbox[row_key] = ttk.Spinbox(self._schedule_frame, width=columns_width[col_key], 
+        #                              textvariable=self._p1_com_level_spinbox_var[row_key], from_=1, to=12, increment=1)
+        #             self._p1_com_level_spinbox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+                    
+        #         if col_key == "p2_name":
+        #             self._p2_name_entry_var[row_key] = tk.StringVar()
+        #             self._p2_name_entry_var[row_key].set(str(schedule[row_key][col_key]))
+        #             self._p2_name_entry[row_key] = ttk.Entry(self._schedule_frame, width=columns_width[col_key], 
+        #                                               textvariable=self._p2_name_entry_var[row_key])
+        #             self._p2_name_entry[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+
+        #         if col_key == "p2_start_score":
+        #             self._p2_start_score_spinbox_var[row_key] = tk.StringVar()
+        #             self._p2_start_score_spinbox_var[row_key].set(str(schedule[row_key][col_key]))
+        #             self._p2_start_score_spinbox[row_key] = ttk.Spinbox(self._schedule_frame, width=columns_width[col_key], 
+        #                                            textvariable=self._p2_start_score_spinbox_var[row_key], from_=1, to=1001, increment=2)
+        #             self._p2_start_score_spinbox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+
+        #         if col_key == "p2_com":
+        #             self._p2_com_checkbutton_var[row_key] = tk.BooleanVar()
+        #             self._p2_com_checkbutton_var[row_key].set(bool(int(schedule[row_key][col_key])))
+        #             self._p2_com_checkbutton[row_key] = ttk.Checkbutton(self._schedule_frame, style="Custom.TCheckbutton",
+        #                                                    variable=self._p2_com_checkbutton_var[row_key], onvalue=True, offvalue=False)
+        #             self._p2_com_checkbutton[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady, sticky=tk.NSEW)                    
+
+        #         if col_key == "p2_com_level":
+        #             self._p2_com_level_combobox_var[row_key] = tk.IntVar()
+        #             self._p2_com_level_combobox_var[row_key].set(0 if int(schedule[row_key]["p2_com"]) == 0 else int(schedule[row_key][col_key]))
+        #             self._p2_com_level_combobox[row_key] = ttk.Combobox(self._schedule_frame, width=columns_width[col_key],
+        #                                                           values=com_level_values, textvariable=self._p2_com_level_combobox_var[row_key])
+        #             self._p2_com_level_combobox[row_key].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+                                        
+        #         x += 1
+            
+        #     # add delete line selector
+        #     self._delete_selector_var[y - 1] = tk.BooleanVar()
+        #     self._delete_selector_var[y - 1].set(False)
+        #     self._delete_selector[y - 1] = ttk.Checkbutton(self._schedule_frame, style="Custom.TCheckbutton", width=3,
+        #                                                               variable=self._delete_selector_var[y - 1], onvalue=True, offvalue=False)
+        #     self._delete_selector[y - 1].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
+        #     y += 1
+        #     x = 0
     
     def _save_schedule(self) -> None:
         pass
