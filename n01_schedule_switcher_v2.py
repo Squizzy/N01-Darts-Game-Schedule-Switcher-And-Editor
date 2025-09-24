@@ -469,8 +469,12 @@ class UI:
         self._style.configure("header.TLabel", 
                               background="lightblue",)  
         
+        self._modify_padx:int = 2
+        self._modify_pady:int = 2
+        
         # display schedule styles
         self._style.configure("value.TLabel",
+                            #   background="lightblue", )
                               background="white", )
         
         self._style.configure("Custom.TCheckbutton",
@@ -546,6 +550,84 @@ class UI:
         
         self._display_modified_schedule()
  
+    def _display_table_add_headers(self, header_info:list[str], x:int, y:int) -> None:
+        for item in header_info:
+            header = ttk.Label(self._schedule_frame, 
+                                text=item.replace("_", "\n"), 
+                                width=self._modification_table_columns_widths[item],
+                                justify=tk.CENTER,  
+                                anchor=tk.CENTER,   
+                                # foreground="red",
+                                style="header.TLabel"
+                                )
+            
+            if item == "set_no" or item == "remove?":
+                header.configure(foreground="red")
+                
+            header.grid(row=y, column=x, padx=1, pady=1, sticky=tk.NSEW)
+            x += 1        
+      
+    def _display_table_add_line_values(self, values_info: dict[str, str|int], row_key:int , x:int , y:int) -> None:
+        
+        for value_info in values_info:
+            value:str|int
+            if value_info == "set_no":
+                value = row_key
+            else:
+                if value_info in ["change_first", "p1_com", "p2_com", "round_limit", "best_of"]:
+                    value = "✓" if values_info[value_info] == 1 else "✕"
+                else:
+                    value = str(values_info[value_info])
+            
+            valuebox = ttk.Label(self._schedule_frame, 
+                                text=value, 
+                                width=self._modification_table_columns_widths[value_info], 
+                                anchor=tk.CENTER,
+                                style="value.TLabel"
+                                )
+            valuebox.grid(row=y, column=x, padx=1, pady=1)
+            x += 1
+            
+            
+        #     value_info = 
+        #     ttk.Label(self._schedule_frame, 
+        #             text=str(y), 
+        #             width=3, 
+        #             foreground = "red",
+        #             anchor=tk.CENTER,
+        #             style="value.TLabel"
+        #             )
+        #     textbox.grid(row=y, column=x, padx=1, pady=1)
+        #     x += 1
+            
+        # textbox = ttk.Label(self._schedule_frame, 
+        #             text=str(y), 
+        #             width=3, 
+        #             foreground = "red",
+        #             anchor=tk.CENTER,
+        #             style="value.TLabel"
+        #             )
+        #     textbox.grid(row=y, column=x, padx=1, pady=1)
+        #     x += 1
+            
+        #     for col_key in schedule[row_key]:
+                
+        #         if col_key in ["change_first", "p1_com", "p2_com", "round_limit", "best_of"]:
+        #             text_value = "✓" if schedule[row_key][col_key] == 1 else "✕"
+        #         else:
+        #             text_value = str(schedule[row_key][col_key])
+                    
+        #         textbox = ttk.Label(self._schedule_frame, 
+        #                             text=text_value, 
+        #                             width=columns_width[col_key], 
+        #                             anchor=tk.CENTER,
+        #                             style="value.TLabel"
+        #                             )
+        #         textbox.grid(row=y, column=x, padx=1, pady=1)
+        #         x += 1
+        #     y += 1
+        #     x = 0
+        
     def _display_original_schedule(self) -> None:
         self._display_schedule(self._original_schedule)
 
@@ -583,80 +665,133 @@ class UI:
         
         # Pre-define the widths of the table cells
         # Note that this this does not adapt if font is face or size is changed
-        columns_width = {
-            "start_score": 6,
-            "round_limit": 6,
-            "round": 6,
-            "max_leg": 4,
-            "best_of": 4,
-            "change_first": 7,
-            "p1_name": 10,
-            "p1_start_score": 6,
-            "p1_com": 5,
-            "p1_com_level": 5,
-            "p2_name": 10,
-            "p2_start_score": 6,
-            "p2_com": 5,
-            "p2_com_level": 5,
-        }
+        # columns_width = {
+        #     "start_score": 6,
+        #     "round_limit": 6,
+        #     "round": 6,
+        #     "max_leg": 4,
+        #     "best_of": 4,
+        #     "change_first": 7,
+        #     "p1_name": 10,
+        #     "p1_start_score": 6,
+        #     "p1_com": 5,
+        #     "p1_com_level": 5,
+        #     "p2_name": 10,
+        #     "p2_start_score": 6,
+        #     "p2_com": 5,
+        #     "p2_com_level": 5,
+        # }
 
         # Generate a table of textboxes to display the original schedule
         x = 0
         y = 0
                 
-        header = ttk.Label(self._schedule_frame, 
-                    text="set\nno", 
-                    width=3,
-                    justify=tk.CENTER,  
-                    anchor=tk.CENTER,   
-                    foreground="red",
-                    style="header.TLabel"
-                    )
-        header.grid(row=y, column=x, padx=1, pady=1)
-        x += 1
+        header: list[str] = []
+        
+        header.append("set_no")
+        header.extend(schedule[0].keys())
+        
+        self._display_table_add_headers(header, x, y)
+        
+                
+        # header = ttk.Label(self._schedule_frame, 
+        #             text="set\nno", 
+        #             width=3,
+        #             justify=tk.CENTER,  
+        #             anchor=tk.CENTER,   
+        #             foreground="red",
+        #             style="header.TLabel"
+        #             )
+        # header.grid(row=y, column=x, padx=1, pady=1)
+        # x += 1
 
-        for key, _ in schedule[0].items():
-            header = ttk.Label(self._schedule_frame, 
-                               text=str(key).replace("_", "\n"), 
-                               width=columns_width[key],
-                               justify=tk.CENTER,  
-                               anchor=tk.CENTER,
-                               style="header.TLabel"
-                               )
-            header.grid(row=y, column=x, padx=1, pady=1)
-            x += 1
+        # for key, _ in schedule[0].items():
+        #     header = ttk.Label(self._schedule_frame, 
+        #                        text=str(key).replace("_", "\n"), 
+        #                        width=columns_width[key],
+        #                        justify=tk.CENTER,  
+        #                        anchor=tk.CENTER,
+        #                        style="header.TLabel"
+        #                        )
+        #     header.grid(row=y, column=x, padx=1, pady=1)
+        #     x += 1
         y += 1
         x = 0
         
+        
+        
         # Create a textbox for each value in the schedule
+        line_values:dict[str, str|int] = {}
         for row_key in schedule:
-            textbox = ttk.Label(self._schedule_frame, 
-                    text=str(y), 
-                    width=3, 
-                    foreground = "red",
-                    anchor=tk.CENTER,
-                    style="value.TLabel"
-                    )
-            textbox.grid(row=y, column=x, padx=1, pady=1)
-            x += 1
+            line_values["set_no"] = row_key
+            line_values.update(schedule[row_key])
             
-            for col_key in schedule[row_key]:
-                
-                if col_key in ["change_first", "p1_com", "p2_com", "round_limit", "best_of"]:
-                    text_value = "✓" if schedule[row_key][col_key] == 1 else "✕"
-                else:
-                    text_value = str(schedule[row_key][col_key])
-                    
-                textbox = ttk.Label(self._schedule_frame, 
-                                    text=text_value, 
-                                    width=columns_width[col_key], 
-                                    anchor=tk.CENTER,
-                                    style="value.TLabel"
-                                    )
-                textbox.grid(row=y, column=x, padx=1, pady=1)
-                x += 1
+            self._display_table_add_line_values(line_values, row_key, x, y)
+            
             y += 1
             x = 0
+            
+            
+            # textbox = ttk.Label(self._schedule_frame, 
+            #         text=str(y), 
+            #         width=3, 
+            #         foreground = "red",
+            #         anchor=tk.CENTER,
+            #         style="value.TLabel"
+            #         )
+            # textbox.grid(row=y, column=x, padx=1, pady=1)
+            # x += 1
+            
+            # for col_key in schedule[row_key]:
+                
+            #     if col_key in ["change_first", "p1_com", "p2_com", "round_limit", "best_of"]:
+            #         text_value = "✓" if schedule[row_key][col_key] == 1 else "✕"
+            #     else:
+            #         text_value = str(schedule[row_key][col_key])
+                    
+            #     textbox = ttk.Label(self._schedule_frame, 
+            #                         text=text_value, 
+            #                         width=columns_width[col_key], 
+            #                         anchor=tk.CENTER,
+            #                         style="value.TLabel"
+            #                         )
+            #     textbox.grid(row=y, column=x, padx=1, pady=1)
+            #     x += 1
+            # y += 1
+            # x = 0
+        
+        
+        
+        
+        # # Create a textbox for each value in the schedule
+        # for row_key in schedule:
+        #     textbox = ttk.Label(self._schedule_frame, 
+        #             text=str(y), 
+        #             width=3, 
+        #             foreground = "red",
+        #             anchor=tk.CENTER,
+        #             style="value.TLabel"
+        #             )
+        #     textbox.grid(row=y, column=x, padx=1, pady=1)
+        #     x += 1
+            
+        #     for col_key in schedule[row_key]:
+                
+        #         if col_key in ["change_first", "p1_com", "p2_com", "round_limit", "best_of"]:
+        #             text_value = "✓" if schedule[row_key][col_key] == 1 else "✕"
+        #         else:
+        #             text_value = str(schedule[row_key][col_key])
+                    
+        #         textbox = ttk.Label(self._schedule_frame, 
+        #                             text=text_value, 
+        #                             width=columns_width[col_key], 
+        #                             anchor=tk.CENTER,
+        #                             style="value.TLabel"
+        #                             )
+        #         textbox.grid(row=y, column=x, padx=1, pady=1)
+        #         x += 1
+        #     y += 1
+        #     x = 0
             
             # header = ttk.Label(original_schedule_frame, text=str(key).replace("_", "\n"), justify=tk.CENTER, background="lightblue")
                 # textbox = ttk.Entry(original_schedule_frame)
@@ -664,9 +799,6 @@ class UI:
     
     def _modify_schedule(self) -> None:
         self._modify_loaded_schedule(self._modified_schedule)
-    
-    def _add_line_to_modified_schedule(self) -> None:
-        pass
     
     def _modification_table_add_headers(self, header_info: list[str], x:int, y:int) -> None:
         for item in header_info:
@@ -889,7 +1021,35 @@ class UI:
 
                 case _:
                     continue                                        
-            
+    
+    def _modification_table_add_new_line(self) -> None:
+        
+        new_row_key = len(self._modified_schedule) + 1
+        empty_schedule_line: dict[str, str|int] = {"start_score": 0,
+                                                   "round_limit": 0,
+                                                   "round": 0,
+                                                   "max_leg": 0,
+                                                   "best_of": 0,
+                                                   "change_first": 0,
+                                                   "p1_name": "",
+                                                   "p1_start_score": 0,
+                                                   "p1_com": 0,
+                                                   "p1_com_level": 0,
+                                                   "p2_name": "",
+                                                   "p2_start_score": 0,
+                                                   "p2_com": 0,
+                                                   "p2_com_level": 0,
+                                                   }
+        
+        self._modified_schedule[new_row_key] = empty_schedule_line
+        self._modify_loaded_schedule(self._modified_schedule)
+        # modifiable_values_line_info: dict[str, str|int] = {}
+        # modifiable_values_line_info["set_no"] = (new_row_key) # The set value, won't be modifiable
+        # modifiable_values_line_info.update(empty_schedule_line)
+        # modifiable_values_line_info["remove?"] = 0 # Deletion selector tick mark- by default 0 = False (unticked)
+        # self._modification_table_add_values_line(modifiable_values_line_info, new_row_key, 0, new_row_key + 1)
+    
+    
     def _delete_lines_from_modified_schedule(self) -> None:
         pass
      
@@ -981,8 +1141,8 @@ class UI:
         self._delete_selector: dict[int, ttk.Checkbutton] = {}
         self._delete_selector_var: dict[int, tk.BooleanVar] = {}
         
-        self._modify_padx:int = 2
-        self._modify_pady:int = 2
+        # self._modify_padx:int = 2
+        # self._modify_pady:int = 2
         
         # Generate a table of textboxes to display the original schedule
         x = 0
@@ -994,7 +1154,7 @@ class UI:
         #         )       
         
         # add Add and Remove buttons # - Load schedule from ini
-        self._add_button = ttk.Button(self._schedule_frame, text="Add a line", command=self._add_line_to_modified_schedule, width=20)
+        self._add_button = ttk.Button(self._schedule_frame, text="Add a line", command=self._modification_table_add_new_line, width=20)
         self._delete_button = ttk.Button(self._schedule_frame, text="Delete selected lines", command=self._delete_lines_from_modified_schedule, width=20)
         
         self._add_button.grid(row = y, column=4, columnspan=4, pady=self._modify_pady)
