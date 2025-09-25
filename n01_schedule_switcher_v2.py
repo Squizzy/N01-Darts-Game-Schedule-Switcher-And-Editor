@@ -565,7 +565,7 @@ class UI:
         display_modified_schedule = ttk.Button(self._buttons_frame, text="Display loaded/modified schedule", command=self.display_modified_schedule, width=buttons_width)
         # - Modify schedule
         modify_schedule = ttk.Button(self._buttons_frame, text="Modify loaded schedule", command=self.modify_schedule, width=buttons_width)
-        # - Save schedule
+        # - Save schedule as csv
         save_schedule = ttk.Button(self._buttons_frame, text="Save modified schedule as new CSV", command=self.save_schedule_as_csv, width=buttons_width)
         # - Set modified schedule to game
         set_schedule = ttk.Button(self._buttons_frame, text="Use this schedule for the game", command=self.set_schedule_to_ini, width=buttons_width)
@@ -595,6 +595,7 @@ class UI:
             return
 
         self._original_schedule = self._ini_schedule.original_schedule_sorted_by_set
+        self._modified_schedule = self._original_schedule.copy()
         
         if self._original_schedule is not None:
             self._original_schedule_loaded = True
