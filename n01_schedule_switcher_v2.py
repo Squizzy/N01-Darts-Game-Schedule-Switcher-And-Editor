@@ -1,5 +1,5 @@
 import toml # type: ignore
-from tkinter.filedialog import askopenfilename
+from tkinter.filedialog import askopenfilename, asksaveasfilename
 from tkinter import messagebox
 import csv
 # from typing import Any
@@ -91,10 +91,10 @@ class N01Ini:
         if self._ini_installer_path != "":
             if self._ini_installer_schedule_found:
                 answer:bool = messagebox.askyesno(title="game settings with schedule found", 
-                                                  message="Game settings found\nthat includes a schedule\nfrom game installer\nUse it?")
+                                                  message="Game settings found\nfrom game installer\nwhich includes a schedule\nUse it?")
             else:
                 answer = messagebox.askyesno(title="game settings with schedule found", 
-                                             message="Game settings found\nbut does NOT includes a schedule\nfrom game installer\nUse it (and create and empty schedule)?")
+                                             message="Game settings found\nfrom game installer\nbut does NOT includes a schedule\nUse it (and create and empty schedule)?")
             if answer:
                 self._original_ini_file_with_path = self._ini_installer_path
                 return self._original_ini_file_with_path != ""
@@ -106,10 +106,10 @@ class N01Ini:
         if self._ini_current_path != "":
             if self._ini_current_path_schedule_found:
                 answer = messagebox.askyesno(title="game settings with schedule found", 
-                                             message="Game settings found\nthat includes a schedule\nin current path\nUse it?")
+                                             message="Game settings found\nin current path\nwhich includes a schedule\nUse it?")
             else:
                 answer = messagebox.askyesno(title="game settings with schedule found", 
-                                             message="Game settings found\nbut does NOT includes a schedule\nin current path\nUse it (and create and empty schedule)?")
+                                             message="Game settings found\nin current path\nbut does NOT includes a schedule\nUse it (and create and empty schedule)?")
             if answer:
                 self._original_ini_file_with_path = self._ini_current_path
                 return self._original_ini_file_with_path != ""
@@ -184,8 +184,8 @@ class N01Ini:
         # ic(imported_schedule)
         
         self._modified_ini_with_imported_schedule = self._original_ini_from_toml.copy()
-        
-        self._modified_ini_with_imported_schedule["schedule"]["count"] = len(imported_schedule)
+        self._modified_ini_with_imported_schedule["schedule"] = {}
+        # self._modified_ini_with_imported_schedule["schedule"]["count"] = len(imported_schedule)
         self._modified_ini_with_imported_schedule["schedule"] = imported_schedule
         
         # for row in modified_ini_with_imported_schedule["schedule"]:
@@ -203,9 +203,9 @@ class N01Ini:
         else:
             initial_dir = "."
         
-        self._modified_ini_file_with_path = askopenfilename(title=title, initialdir=initial_dir, filetypes=filetypes)
+        self._filename_for_modified_ini_file_with_path = askopenfilename(title=title, initialdir=initial_dir, filetypes=filetypes)
                
-        return self._modified_ini_file_with_path != ""
+        return self._filename_for_modified_ini_file_with_path != ""
 
     def _save_ini_file(self, filename:str, data: dict[str, dict[str, str|int]]) -> bool:
         
@@ -237,18 +237,21 @@ class N01Ini:
     def save_ini_with_updated_schedule(self) -> None:
         
         self._select_modified_ini_file_path()
-        self._save_ini_file(self._modified_ini_file_with_path, self._modified_ini_with_imported_schedule)
+        self._save_ini_file(self._filename_for_modified_ini_file_with_path, self._modified_ini_with_imported_schedule)
         
 
 class Schedule:
-    _original_schedule: dict[str, str|int] = {}
-    _original_schedule_sorted_by_set: dict[int, dict[str, str|int]] = {}
+    _original_schedule:dict[str, str|int] = {}
+    _original_schedule_sorted_by_set:dict[int, dict[str, str|int]] = {}
     
-    _schedule_csv_to_import: str = ""
-    _imported_schedule: dict[str, str|int] = {}
-    _imported_schedule_sorted_by_set: dict[int, dict[str, str|int]] = {}
+    _schedule_csv_to_import:str = ""
+    _imported_schedule:dict[str, str|int] = {}
+    _imported_schedule_sorted_by_set:dict[int, dict[str, str|int]] = {}
     
-    _schedule_header: list[str] = []
+    _schedule_header:list[str] = []
+    
+    _modified_schedule_sorted_by_set:dict[int, dict[str, str|int]] = {}
+    _modified_schedule:dict[str, str|int] = {}
     
     schedule_headers = {
             "start_score": "Round level (eg 301, 501, 701, ...)",
@@ -281,6 +284,10 @@ class Schedule:
     @property
     def imported_schedule(self) -> dict[str, str|int]:
         return self._imported_schedule
+    
+    @property
+    def modified_schedule(self) -> dict[str, str|int]:
+        return self._modified_schedule
     
     def extract_schedule_from_original_ini(self, data) -> bool:
 
@@ -345,8 +352,9 @@ class Schedule:
             return False
                     
         return True
+
     
-    def _get_csv_file_path(self) -> bool:
+    def _select_schedule_csv_file_to_load(self) -> bool:
         
         title: str = "Select the schedule file to import"
         filetypes: list[tuple[str, str]] = [("CSV files", "*.csv"), ("All files", "*.*")]
@@ -354,9 +362,9 @@ class Schedule:
                
         return self._schedule_csv_to_import != ""
     
-    def _load_schedule_from_csv(self) -> bool:
+    def _load_schedule_from_csv_sorted_by_sets(self) -> bool:
         
-        if not self._get_csv_file_path():
+        if not self._select_schedule_csv_file_to_load():
             return False
         
         self._imported_schedule_sorted_by_set = {}
@@ -392,14 +400,6 @@ class Schedule:
         
         return True
 
-    def import_schedule_from_csv(self) -> bool:
-        if not self._load_schedule_from_csv():
-            return False
-
-        if not self._convert_imported_schedule_to_toml_schedule():
-            return False
-        
-        return True
     
     def _convert_imported_schedule_to_toml_schedule(self) -> bool:
         # Convert the imported schedule to a toml string
@@ -409,7 +409,68 @@ class Schedule:
                 self._imported_schedule[f"{key}_{set}"] = self._imported_schedule_sorted_by_set[set][key]
                 
         return True
+    
+    def import_schedule_from_csv(self) -> bool:
+        if not self._load_schedule_from_csv_sorted_by_sets():
+            return False
 
+        if not self._convert_imported_schedule_to_toml_schedule():
+            return False
+        
+        return True
+
+    
+    def convert_modified_schedule_sorted_by_set_to_toml_schedule(self) -> bool:
+        # Convert the imported schedule to a toml string
+        self._modified_schedule = {}
+        self._modified_schedule["count"] = len(self._modified_schedule_sorted_by_set)
+        for set in self._modified_schedule_sorted_by_set:
+            for key in self._modified_schedule_sorted_by_set[set]:
+                self._modified_schedule[f"{key}_{set}"] = self._modified_schedule_sorted_by_set[set][key]
+                
+        return True
+
+    def _select_modified_schedule_csv_to_save_filename(self) -> bool:
+        
+        title: str = "Select filename to save the schedule file to csv as"
+        filetypes: list[tuple[str, str]] = [("CSV files", "*.csv"), ("All files", "*.*")]
+        self._modified_schedule_csv_to_save_filename = asksaveasfilename(title=title, initialdir=".", filetypes=filetypes)
+               
+        return self._modified_schedule_csv_to_save_filename != ""
+    
+    def save_modified_schedule_as_csv(self, data: dict[int, dict[str, str|int]]) -> bool:
+        self._modified_schedule_sorted_by_set = data.copy()
+        
+        ic(data)
+        
+        # Select the file to save to
+        if not self._select_modified_schedule_csv_to_save_filename():
+            return False
+        
+        # Add the extension if not there by default
+        if self._modified_schedule_csv_to_save_filename[-4:] != ".csv":
+            self._modified_schedule_csv_to_save_filename += ".csv"
+        
+        # Get the headers from the data
+        csv_headers = data[0].keys()
+        
+        # Save the CSV data
+        try:        
+            with open(self._modified_schedule_csv_to_save_filename, "w", newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=csv_headers)
+                writer.writeheader()
+                
+                for set in range(len(self._modified_schedule_sorted_by_set)):
+                    this_row_data: dict[str, str|int] = {}
+                    for header in csv_headers:
+                        this_row_data[header] =  self._modified_schedule_sorted_by_set[set][header]
+                    writer.writerow(this_row_data)
+
+        except Exception as e:
+            messagebox.showerror(title="Error saving schedule csv file", message=f"error: {e}")
+            return False
+        
+        return True
 
 class UI:
     _window:tk.Tk
@@ -418,6 +479,8 @@ class UI:
     _modify_padx:int
     _modify_pady:int
     _style:ttk.Style
+    
+    _ini_file:N01Ini
     
     _original_schedule:dict[int, dict[str, str|int]] = {}
     _original_schedule_loaded:bool = False 
@@ -483,15 +546,13 @@ class UI:
                             #   anchor=tk.CENTER, 
                               background="lightblue")
 
-        
-        
     def _generate_buttons_frame(self) -> None:
 
         # Generate a frame for the buttons
         # self._buttons_frame = tk.Frame(self._window, bg="yellow")
         self._buttons_frame.place(x = 10, y = 10)
         
-        buttons_width:int = 30
+        buttons_width:int = 35
         # self._style = ttk.Style()
         
         # - Load schedule from ini
@@ -505,11 +566,11 @@ class UI:
         # - Modify schedule
         modify_schedule = ttk.Button(self._buttons_frame, text="Modify loaded schedule", command=self.modify_schedule, width=buttons_width)
         # - Save schedule
-        save_schedule = ttk.Button(self._buttons_frame, text="Save loaded/modified schedule", command=self._save_schedule, width=buttons_width)
+        save_schedule = ttk.Button(self._buttons_frame, text="Save modified schedule as new CSV", command=self.save_schedule_as_csv, width=buttons_width)
         # - Set modified schedule to game
-        set_schedule = ttk.Button(self._buttons_frame, text="Set modified schedule to game", command=self._set_schedule, width=buttons_width)
+        set_schedule = ttk.Button(self._buttons_frame, text="Use this schedule for the game", command=self.set_schedule_to_ini, width=buttons_width)
         # - quit
-        quit_app = ttk.Button(self._buttons_frame, text="Quit", command=self._quit, width=buttons_width-10, style="quit.TButton")
+        quit_app = ttk.Button(self._buttons_frame, text="Quit", command=self.quit, width=20, style="quit.TButton")
 
         # Add the buttons to the frame
         load_original_schedule.grid(    row=0, column=0, columnspan=1, padx=5, pady=2)
@@ -525,19 +586,15 @@ class UI:
    
     def load_original_ini_schedule(self) -> None:
         
-        ini_file:N01Ini = N01Ini()
-        ini_schedule:Schedule = Schedule()
+        self._ini_file = N01Ini()
+        self._ini_schedule:Schedule = Schedule()
 
         self._original_schedule = {}
 
-        if not(ini_schedule.extract_schedule_from_original_ini(ini_file.original_ini_data_from_toml)):
+        if not(self._ini_schedule.extract_schedule_from_original_ini(self._ini_file.original_ini_data_from_toml)):
             return
 
-        self._original_schedule = ini_schedule.original_schedule_sorted_by_set
-        
-        # ic(ini_file.original_ini_data_from_toml)
-        # ic(ini_schedule.original_schedule_sorted_by_set)
-        # ic(self._original_schedule)
+        self._original_schedule = self._ini_schedule.original_schedule_sorted_by_set
         
         if self._original_schedule is not None:
             self._original_schedule_loaded = True
@@ -1014,7 +1071,7 @@ class UI:
     
     def modification_table_add_new_line(self) -> None:
         
-        new_row_key = len(self._modified_schedule) + 1
+        new_row_key = len(self._modified_schedule)
         empty_schedule_line: dict[str, str|int] = {"start_score": 0,
                                                    "round_limit": 0,
                                                    "round": 0,
@@ -1048,7 +1105,6 @@ class UI:
 
         self._modified_schedule = updated_schedule
         self.modify_schedule()
-        
         
     def _create_modify_loaded_schedule_table(self, schedule:dict[int, dict[str, str|int]]) -> None:
         
@@ -1348,14 +1404,99 @@ class UI:
         #     self._delete_selector[y - 1].grid(row=y, column=x, padx=self._modify_padx, pady=self._modify_pady)
         #     y += 1
         #     x = 0
+        
+    def _read_all_modification_values(self) -> None:
+        
+        self._modified_schedule = {}
+        number_of_entries = len(self._start_score_spinbox_var)
+        
+        for row_key in range(number_of_entries):
+            self._modified_schedule[row_key] = {}
+            self._modified_schedule[row_key]["start_score"] = int(self._start_score_spinbox_var[row_key].get())
+            self._modified_schedule[row_key]["round_limit"] = bool(self._round_limit_checkbutton_var[row_key].get())
+            self._modified_schedule[row_key]["round"] = int(self._round_spinbox_var[row_key].get())
+            self._modified_schedule[row_key]["max_leg"] = int(self._max_leg_spinbox_var[row_key].get())
+            self._modified_schedule[row_key]["best_of"] = bool(self._best_of_checkbutton_var[row_key].get())
+            self._modified_schedule[row_key]["best_of"] = bool(self._change_first_checkbutton_var[row_key].get())
+            self._modified_schedule[row_key]["p1_name"] = str(self._p1_name_entry_var[row_key].get())
+            self._modified_schedule[row_key]["p1_start_score"] = int(self._p1_start_score_spinbox_var[row_key].get())
+            self._modified_schedule[row_key]["p1_com"] = bool(self._p1_com_checkbutton_var[row_key].get())
+            self._modified_schedule[row_key]["p1_com_level"] = int(self._p1_com_level_spinbox_var[row_key].get())
+            self._modified_schedule[row_key]["p2_name"] = str(self._p2_name_entry_var[row_key].get())
+            self._modified_schedule[row_key]["p2_start_score"] = int(self._p2_start_score_spinbox_var[row_key].get())
+            self._modified_schedule[row_key]["p2_com"] = bool(self._p2_com_checkbutton_var[row_key].get())
+            self._modified_schedule[row_key]["p2_com_level"] = int(self._p2_com_level_combobox_var[row_key].get())
+                
+                
+        # for row_key in self._modified_schedule:
+        #     for col_key in self._modified_schedule[row_key]:
+                # if col_key == "start_score":
+                #     self._modified_schedule[row_key][col_key] = int(self._start_score_spinbox_var[row_key].get())
+                # if col_key == "round_limit":
+                #     self._modified_schedule[row_key][col_key] = bool(self._round_limit_checkbutton_var[row_key].get())
+                # if col_key == "round":
+                #     self._modified_schedule[row_key][col_key] = int(self._round_spinbox_var[row_key].get())
+                # if col_key == "max_leg":
+                #     self._modified_schedule[row_key][col_key] = int(self._max_leg_spinbox_var[row_key].get())
+                # if col_key == "best_of":
+                #     self._modified_schedule[row_key][col_key] = bool(self._best_of_checkbutton_var[row_key].get())
+                # if col_key == "change_first":
+                #     self._modified_schedule[row_key][col_key] = bool(self._change_first_checkbutton_var[row_key].get())
+                # if col_key == "p1_name":
+                #     self._modified_schedule[row_key][col_key] = str(self._p1_name_entry_var[row_key].get())
+                # if col_key == "p1_start_score":
+                #     self._modified_schedule[row_key][col_key] = int(self._p1_start_score_spinbox_var[row_key].get())
+                # if col_key == "p1_com":
+                #     self._modified_schedule[row_key][col_key] = bool(self._p1_com_checkbutton_var[row_key].get())
+                # if col_key == "p1_com_level":
+                #     self._modified_schedule[row_key][col_key] = int(self._p1_com_level_spinbox_var[row_key].get())
+                # if col_key == "p2_name":
+                #     self._modified_schedule[row_key][col_key] = str(self._p2_name_entry_var[row_key].get())
+                # if col_key == "p2_start_score":
+                #     self._modified_schedule[row_key][col_key] = int(self._p2_start_score_spinbox_var[row_key].get())
+                # if col_key == "p2_com":
+                #     self._modified_schedule[row_key][col_key] = bool(self._p2_com_checkbutton_var[row_key].get())
+                # if col_key == "p2_com_level":
+                #     self._modified_schedule[row_key][col_key] = int(self._p2_com_level_combobox_var[row_key].get())
     
-    def _save_schedule(self) -> None:
-        pass
+    def save_schedule_as_csv(self) -> None:
+        saving_schedule_to_csv: Schedule = Schedule()
+        
+        self._read_all_modification_values()
+        saving_schedule_to_csv.save_modified_schedule_as_csv(self._modified_schedule)
 
-    def _set_schedule(self) -> None:
-        pass
+    def set_schedule_to_ini(self) -> None:
+        
+        if self._modified_schedule is None or not bool(self._modified_schedule):
+            messagebox.showwarning(title="Modified schedule", message="No schedule loaded - aborting")
+            ic("modified_schedule empty - exiting")
+            return
+        ic(self._modified_schedule)
+        
+        
+        saving_schedule_to_ini: Schedule = Schedule()
+        try:
+            if self._ini_file is not None:
+                pass
+        except Exception as e:
+            self._ini_file = N01Ini()
+        
+        
+            # print(f"yeah, not found: {e}")
+            #     print("self_ini_file is NOT instantiated")
+            # else:
+            #     print("self_ini_file is instantiated")
+        try:
+            if self._start_score_spinbox_var[0] is not None:
+                self._read_all_modification_values()
+        except Exception as e:
+            pass
+        saving_schedule_to_ini._modified_schedule_sorted_by_set = self._modified_schedule
+        saving_schedule_to_ini.convert_modified_schedule_sorted_by_set_to_toml_schedule()
+        self._ini_file.replace_original_schedule_with_imported_schedule(saving_schedule_to_ini._modified_schedule)
+        self._ini_file.save_ini_with_updated_schedule()
     
-    def _quit(self)-> None:
+    def quit(self)-> None:
         self._window.destroy()
     
     @property
