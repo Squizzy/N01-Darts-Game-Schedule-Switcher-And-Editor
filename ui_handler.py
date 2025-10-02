@@ -64,7 +64,10 @@ class UI:
 
         self._load_styles()
         
-        self._generate_buttons_frame()    
+        self._generate_buttons_frame()   
+        
+        # turn off all the buttons that can't be used
+        self._disable_buttons() 
 
     def _load_styles(self) -> None:
         self._style = ttk.Style()
@@ -94,11 +97,10 @@ class UI:
     def _generate_buttons_frame(self) -> None:
 
         # Generate a frame for the buttons
-        # self._buttons_frame = tk.Frame(self._window, bg="yellow")
+        # TODO: Is this the best way to place the frame?
         self._buttons_frame.place(x = 10, y = 10)
         
         buttons_width:int = 35
-        # self._style = ttk.Style()
         
         # - Load schedule from ini
         self._load_original_schedule = ttk.Button(self._buttons_frame, text="Load current game schedule", command=self.load_original_ini_schedule, width=buttons_width)
@@ -128,9 +130,6 @@ class UI:
         self._set_schedule.grid(              row=3, column=0, columnspan=1, padx=5, pady=2)
 
         self._quit_app.grid(                  row=1, column=3, columnspan=1, padx=5, pady=2)
-        
-        # turn off all the buttons that can't be used
-        self._disable_buttons()
    
     def _disable_buttons(self) -> None:
         self._display_original_schedule["state"] = "disabled"
@@ -148,52 +147,73 @@ class UI:
     
     def load_original_ini_schedule(self) -> None:
         
+        # Load the ini file
         self._ini_file = N01Ini()
+        
+        # Create a schedule instance
         self._ini_schedule:Schedule = Schedule()
 
+        # Reset the dictionary that will contain the schedule sorted by sets
         self._schedule_original_sorted_by_set = {}
 
+        # Extract the schedule from the original ini file (will be in TOML format)
         if not(self._ini_schedule.extract_toml_schedule_from_original_ini(self._ini_file.original_ini_data_from_toml)):
             return
 
+        # Convert the ini schedule to sorted by set
         self._ini_schedule.convert_schedule_in_toml_to_schedule_sorted_by_set(self._ini_schedule.schedule_original_in_toml)
 
+        # set both the app's original schedule, and the modified schedule, to that schedule coming from the original ini
         self._schedule_original_sorted_by_set = self._ini_schedule.schedule_original_sorted_by_set
         self._schedule_modified_sorted_by_set = self._schedule_original_sorted_by_set.copy()
         
+        # Flag that the original schedule is loaded
         if bool(self._schedule_original_sorted_by_set):
             self._schedule_original_is_loaded = True
-            
+        
+        # Display the schedule table in view-only mode
         self.display_original_schedule()
+        
+        # As there is a schedule loaded, modification are possible, re-enable the buttons
         self._enable_buttons()
 
     def load_modified_schedule(self) -> None:
         schedule: Schedule = Schedule()
         
+        # Get the schedule to do its magic importing from a csv in sorted by set format
         schedule.import_schedule_from_csv()
         self._schedule_modified_sorted_by_set = schedule.schedule_imported_sorted_by_set
         
+        # Display the schedule table in view-only mode
         self.display_modified_schedule()
+        
+        # As there is a schedule loaded, modification are possible, re-enable the buttons
         self._enable_buttons()
         
     def display_original_schedule(self) -> None:
+        # Stub to switch between the original and the modified schedule
         self._create_table_to_view_schedule(self._schedule_original_sorted_by_set)
 
     def display_modified_schedule(self) -> None:
+        # Stub to switch between the original and the modified schedule
         self._create_table_to_view_schedule(self._schedule_modified_sorted_by_set)
         
     def _destroy_schedule_frame(self) -> None:
+        # Destroys the schedule frame before displaying a new one (view or modify mode)
         if self._schedule_frame.winfo_exists():
-            # if self._schedule_frame is not None:
             self._schedule_frame.grid_forget()
             self._schedule_frame.destroy()
     
     def _create_schedule_frame(self) -> None:
+        
         # Non-scrollable frame
         self._schedule_frame = tk.Frame(self._window, bg="lightblue")
         self._schedule_frame.place(x = 10, y = 140)
         
-        # Non-working scrollable frame as per: https://blog.teclado.com/tkinter-scrollable-frames/
+        # Scrollable frame
+        # Currently not working so not enabled
+        # TODO: fix scrollable schedule frame
+        # below as per: https://blog.teclado.com/tkinter-scrollable-frames/
         # schedule_frame:tk.Frame = tk.Frame(self._window, bg="lightblue")
         # canvas = tk.Canvas(schedule_frame)
         # scrollbar = ttk.Scrollbar(schedule_frame, orient="vertical", command=canvas.yview)
@@ -289,7 +309,7 @@ class UI:
         
         # check if a schedule is loaded (not empty)
         if not bool(schedule):
-            messagebox.showinfo(title="display loaded schedule", message="No schedule loaded")
+            messagebox.showwarning(title="Display loaded schedule", message="No schedule loaded to display", icon="warning")
             return
 
         # if a schedule frame already exists, destroy it
@@ -301,7 +321,8 @@ class UI:
         # Generate a table of textboxes to display the original schedule
         x = 0
         y = 0
-                
+        
+        # Add the headers
         header: list[str] = []
         
         header.append("set_no")
@@ -312,7 +333,7 @@ class UI:
         y += 1
         x = 0
 
-        # Create a textbox for each value in the schedule
+        # Add a line for each of the items
         line_values:dict[str, str|int] = {}
         for row_key in schedule:
             line_values["set_no"] = row_key
@@ -325,6 +346,7 @@ class UI:
             
     
     def modify_schedule(self) -> None:
+        # Stub for the buttons (lazily not passing the arguments from the button)
         self._create_table_to_modify_loaded_schedule(self._schedule_modified_sorted_by_set)
     
     
@@ -904,78 +926,53 @@ class UI:
             self._schedule_modified_sorted_by_set[row_key]["p2_start_score"] = int(self._p2_start_score_spinbox_var[row_key].get())
             self._schedule_modified_sorted_by_set[row_key]["p2_com"] = bool(self._p2_com_checkbutton_var[row_key].get())
             self._schedule_modified_sorted_by_set[row_key]["p2_com_level"] = int(self._p2_com_level_combobox_var[row_key].get())
-                
-                
-        # for row_key in self._modified_schedule:
-        #     for col_key in self._modified_schedule[row_key]:
-                # if col_key == "start_score":
-                #     self._modified_schedule[row_key][col_key] = int(self._start_score_spinbox_var[row_key].get())
-                # if col_key == "round_limit":
-                #     self._modified_schedule[row_key][col_key] = bool(self._round_limit_checkbutton_var[row_key].get())
-                # if col_key == "round":
-                #     self._modified_schedule[row_key][col_key] = int(self._round_spinbox_var[row_key].get())
-                # if col_key == "max_leg":
-                #     self._modified_schedule[row_key][col_key] = int(self._max_leg_spinbox_var[row_key].get())
-                # if col_key == "best_of":
-                #     self._modified_schedule[row_key][col_key] = bool(self._best_of_checkbutton_var[row_key].get())
-                # if col_key == "change_first":
-                #     self._modified_schedule[row_key][col_key] = bool(self._change_first_checkbutton_var[row_key].get())
-                # if col_key == "p1_name":
-                #     self._modified_schedule[row_key][col_key] = str(self._p1_name_entry_var[row_key].get())
-                # if col_key == "p1_start_score":
-                #     self._modified_schedule[row_key][col_key] = int(self._p1_start_score_spinbox_var[row_key].get())
-                # if col_key == "p1_com":
-                #     self._modified_schedule[row_key][col_key] = bool(self._p1_com_checkbutton_var[row_key].get())
-                # if col_key == "p1_com_level":
-                #     self._modified_schedule[row_key][col_key] = int(self._p1_com_level_spinbox_var[row_key].get())
-                # if col_key == "p2_name":
-                #     self._modified_schedule[row_key][col_key] = str(self._p2_name_entry_var[row_key].get())
-                # if col_key == "p2_start_score":
-                #     self._modified_schedule[row_key][col_key] = int(self._p2_start_score_spinbox_var[row_key].get())
-                # if col_key == "p2_com":
-                #     self._modified_schedule[row_key][col_key] = bool(self._p2_com_checkbutton_var[row_key].get())
-                # if col_key == "p2_com_level":
-                #     self._modified_schedule[row_key][col_key] = int(self._p2_com_level_combobox_var[row_key].get())
+    
     
     def save_schedule_as_csv(self) -> None:
         schedule: Schedule = Schedule()
         
         
-        if "self._start_score_spinbox" not in locals():
-            # messagebox.showwarning(title="error", message="No modifications detected")
-            ...
-        else:
+        if hasattr(self, "_start_score_spinbox"):
             self._read_table_of_modified_values()
+        else:
+            # currently below left while for debug, but should not be needed
+            messagebox.showwarning(title="error", message="No modifications has been attempted, no change to read")
+            
         schedule.save_modified_schedule_as_csv(self._schedule_modified_sorted_by_set)
 
     def set_schedule_to_ini(self) -> None:
-        
+
+        # Check if there is a modified schedule, if not, abort        
         if not hasattr(self, "_modified_schedule") or not bool(self._schedule_modified_sorted_by_set):
-            messagebox.showwarning(title="Modified schedule", message="No schedule loaded - aborting")
+            messagebox.showwarning(title="Modified schedule", message="No schedule loaded - aborting", icon="warning")
             return
         
-        
-        saving_schedule_to_ini: Schedule = Schedule()
-        # try:
-        #         pass
-        # except Exception as e:
+        # Instantiate a schedule
+        schedule: Schedule = Schedule()
+
+        # If no ini file has been loaded, request the ini file
         if not hasattr(self, "_ini_file"):
             self._ini_file = N01Ini()
         
-        
-            # print(f"yeah, not found: {e}")
-            #     print("self_ini_file is NOT instantiated")
-            # else:
-            #     print("self_ini_file is instantiated")
-        # try:
+        # Abort if no ini file is selected
+        if not hasattr(self, "_ini_file"):
+            messagebox.showwarning(title="Ini file to save to", message="No ini file selected to store the schedule. Aborting", icon="warning")
+            return
+            
+        # If there are modifications to the schedule, read the latest version
         if bool(self._start_score_spinbox_var):
             self._read_table_of_modified_values()
-        # except Exception as e:
-        #     pass
-        # saving_schedule_to_ini._schedule_modified_sorted_by_set = self._modified_schedule
-        saving_schedule_to_ini.store_schedule_modifications(self._schedule_modified_sorted_by_set)
-        saving_schedule_to_ini.convert_modified_schedule_sorted_by_set_to_toml_schedule()
-        self._ini_file.replace_original_schedule_with_imported_schedule(saving_schedule_to_ini.schedule_modified_in_toml)
+
+        # Transfer the modified schedule to the Schedule
+        schedule.store_schedule_modifications(self._schedule_modified_sorted_by_set)
+        
+        # Convert it to a schedule in TOML format
+        schedule.convert_modified_schedule_sorted_by_set_to_toml_schedule()
+        
+        # Send that TOML schedule to the ini handler
+        self._ini_file.replace_original_schedule_with_imported_schedule(schedule.schedule_modified_in_toml)
+        
+        # Save the ini with the updated schedule
         self._ini_file.save_ini_with_updated_schedule()
     
     def quit(self)-> None:

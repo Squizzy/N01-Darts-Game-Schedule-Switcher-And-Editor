@@ -1,7 +1,10 @@
+# standard modules
 from tkinter import messagebox
 from pathlib import Path
 from os import getenv
 from tkinter.filedialog import askopenfilename
+
+# pip imported modules
 import toml # type: ignore
 
 class N01Ini:
@@ -25,21 +28,6 @@ class N01Ini:
         if not self.load_original_ini_file():
             # TODO: maybe something to inform the instantiator?
             ...
-            
-        # print("Loading n01.ini file")
-        
-        # self._identify_ini_files()
-        
-        # if not self._select_original_ini_file_path():
-        #     messagebox.showerror(title="Error selecting n01.ini file", message="no ini file selected")
-        #     return
-
-        # if not self._load_original_ini_file():
-        #     messagebox.showerror(title="Error loading n01.ini file", message="Error in loading TOML data")
-        #     return
-           
-        # print("n01.ini file (game settings and schedule if one) loaded successfully")
-        # ic(len(self._original_ini_from_toml))
 
     @property
     def ini_file_location(self) -> str:
@@ -55,12 +43,10 @@ class N01Ini:
         def has_schedule(path: Path) -> bool:
             with open(path, "r") as f:
                 file=f.readlines()
-                found:bool = False
                 for line in file:
                     if "[schedule]" in line:
-                        found = True
-                        break
-                return found
+                        return True
+                return False
                 
         def identify_ini_files() -> None:
             
@@ -69,12 +55,11 @@ class N01Ini:
                     return True, has_schedule(path)
                 return False, False
             
-            # if N01 installer has been run, the ini file is located in the virtual store
-
-            installer_ini_path: Path = Path(str(getenv("LOCALAPPDATA"))) / "VirtualStore" / "Program Files (x86)" / "n01" / "n01.ini"
-
             file_found: bool = False
-            schedule_found: bool = False
+            schedule_found: bool = False 
+            
+            # if N01 installer has been run, the ini file is located in the virtual store
+            installer_ini_path: Path = Path(str(getenv("LOCALAPPDATA"))) / "VirtualStore" / "Program Files (x86)" / "n01" / "n01.ini"
             
             file_found, schedule_found = file_found_at_path(installer_ini_path)
             if file_found:
@@ -82,9 +67,9 @@ class N01Ini:
                 if schedule_found:
                     self._ini_installer_schedule_found = True
                     
-                
             # Search in the current path
             current_path = Path(".") / "n01.ini"
+            
             file_found, schedule_found = file_found_at_path(current_path)
             if file_found:
                 self._ini_current_path = str(current_path)
@@ -94,47 +79,58 @@ class N01Ini:
         def select_original_ini_file_path() -> bool:
             
             # If there is a usable ini in the installer folder, offer to use it
+            title:str = "game settings with schedule"
+            message:str
+            settings_found:str = "Game settings found"
+            location_installer:str = "At the location the installer sets"
+            location_current_path:str = "In the current folder"
+            location_selected:str = "At the location selected"
+            contains_schedule:str = "Includes a schedule"
+                
             if self._ini_installer_path == "":
-                messagebox.showinfo(title="game settings with schedule", 
-                                    message="No game settings found\nthat includes a schedule\nat installer path location")
+                message=f"{location_installer}:\n{settings_found}: No\n{contains_schedule}: No"
+                messagebox.showinfo(title=title, message=message, icon="info")
                     
             else:
                 if self._ini_installer_schedule_found:
-                    answer:bool = messagebox.askyesno(title="game settings with schedule found", 
-                                                    message="Game settings found\nfrom game installer\nwhich includes a schedule\nUse it?")
+                    message=f"{location_installer}:\n{settings_found}: Yes\n{contains_schedule}: Yes\nUse it?"
+                    answer:bool = messagebox.askyesno(title=title, message=message, icon="question")
                 else:
-                    answer = messagebox.askyesno(title="game settings with schedule found", 
-                                                message="Game settings found\nfrom game installer\nbut does NOT includes a schedule\nUse it (and create and empty schedule)?")
+                    message="Game settings found\nat location the installer sets\nbut does NOT include a schedul.e\nUse it (and create and empty schedule)?"
+                    message=f"{location_installer}:\n{settings_found}: Yes\n{contains_schedule}: No\nUse it (and create and empty schedule)?"
+                    answer = messagebox.askyesno(title=title, message=message, icon="question")
+                                                
                 if answer:
                     self._original_ini_file_with_path = self._ini_installer_path
                     return self._original_ini_file_with_path != ""
             
+            # If nothing was used above, try the current path
             # If there is a usable ini in the current path, offer to use it
             if self._ini_current_path == "":
-                messagebox.showinfo(title="game settings with schedule", 
-                                    message="No game settings found\nthat includes a schedule\nin current directory")        
+                message=f"{location_current_path}:\n{settings_found}: No\n{contains_schedule}: No"
+                messagebox.showinfo(title=title, message=message, icon="info")
                 
             else:    
                 if self._ini_current_path_schedule_found:
-                    answer = messagebox.askyesno(title="game settings with schedule found", 
-                                                message="Game settings found\nin current path\nwhich includes a schedule\nUse it?")
+                    message=f"{location_current_path}:\n{settings_found}: Yes\n{contains_schedule}: Yes\nUse it?"
+                    answer = messagebox.askyesno(title=title, message=message, icon="question")
                 else:
-                    answer = messagebox.askyesno(title="game settings with schedule found", 
-                                                message="Game settings found\nin current path\nbut does NOT includes a schedule\nUse it (and create and empty schedule)?")
+                    message=f"{location_current_path}:\n{settings_found}: Yes\n{contains_schedule}: No\nUse it (and create and empty schedule)?"
+                    answer = messagebox.askyesno(title=title, message=message)
                 if answer:
                     self._original_ini_file_with_path = self._ini_current_path
                     return self._original_ini_file_with_path != ""
             
             # If above not found or not used, 
             # ask for a file location,  starting from current directory
-            title: str = "Select n01.ini file"
+            title_ask = "Select n01.ini file"
             filetypes: list[tuple[str, str]] = [("INI files", "*.ini"), ("TOML files", "*.toml"), ("All files", "*.*")]
-            self._original_ini_file_with_path = askopenfilename(title=title, initialdir=".", filetypes=filetypes)
+            self._original_ini_file_with_path = askopenfilename(title=title_ask, initialdir=".", filetypes=filetypes)
             
             if self._original_ini_file_with_path != "":
                 if not has_schedule(Path(self._original_ini_file_with_path)):
-                    answer = messagebox.askyesno(title="game settings loaded", 
-                                                message="game settings loaded\nbut no schedule in it.\nuse it (and create and empty schedule)?")
+                    message=f"{location_selected}:\n{settings_found}: Yes\n{contains_schedule}: No\nUse it (and create and empty schedule)?"
+                    answer = messagebox.askyesno(title=title, message=message, icon="question")
                     if not answer:
                         self._original_ini_file_with_path = ""
                 
@@ -144,6 +140,7 @@ class N01Ini:
             raw_data_lines: list[str] = []
             raw_data: str = ""
             
+            # Create an empty schedule line dataset
             empty_schedule = [
                 "[schedule]\n",
                 "count=0",
@@ -163,6 +160,7 @@ class N01Ini:
                 "p2_com_level_0=0\n"
                 ]
             
+            # Reset the dictionary holding the data as new data will be loaded to replace the current one
             self._original_ini_from_toml = {}
             
             try:
@@ -178,13 +176,14 @@ class N01Ini:
                         raw_data += line + ('"|||"\n' if line.endswith('=') else "\n")
 
             except ValueError as e:
-                messagebox.showerror(title="Error loading n01.ini file", message=f"error: {e}")
+                messagebox.showerror(title="Loading n01.ini file", message=f"Error loading the ini file:\n{e}", icon="error")
                 return False
             
             if "[schedule]" not in raw_data:
                 raw_data += "\n".join(empty_schedule)
             
-            self._original_ini_from_toml=toml.loads(raw_data)
+            # move all the recovered data from the file to the dictionary, but parsed from TOML
+            self._original_ini_from_toml = toml.loads(raw_data)
 
             return True
 
@@ -192,30 +191,23 @@ class N01Ini:
         identify_ini_files()
         
         if not select_original_ini_file_path():
-            messagebox.showerror(title="Error selecting n01.ini file", message="no ini file selected")
+            messagebox.showerror(title="Error selecting n01.ini file", message="no ini file selected", icon="warning")
             return False
 
         if not load_original_ini_file():
-            messagebox.showerror(title="Error loading n01.ini file", message="Error in loading TOML data")
+            messagebox.showerror(title="Error loading n01.ini file", message="Error in loading TOML data", icon="warning")
             return False
         return True
 
     
     def replace_original_schedule_with_imported_schedule(self, imported_schedule: dict[str, str|int]) -> None:
         
-        # ic(imported_schedule)
         
         self._modified_ini_with_imported_schedule = self._original_ini_from_toml.copy()
         self._modified_ini_with_imported_schedule["schedule"] = {}
-        # self._modified_ini_with_imported_schedule["schedule"]["count"] = len(imported_schedule)
         self._modified_ini_with_imported_schedule["schedule"] = imported_schedule
         
-        # for row in modified_ini_with_imported_schedule["schedule"]:
-            # pass
-        #     ic(row)
-            # ic(f"{modified_ini_with_imported_schedule["schedule"][row]}, {self._original_ini_from_toml["schedule"][row]}, {row} ")     
         
-
     def save_ini_with_updated_schedule(self) -> None:
         
         def select_modified_ini_file_path() -> bool:
@@ -236,7 +228,7 @@ class N01Ini:
         def save_ini_file(filename:str, data: dict[str, dict[str, str|int]]) -> bool:
             
             try:
-                # turn the dict into a list of strings to be saved
+                # turn the dict into a list of strings to be saved using the TOML standard
                 untomled_list: list[str] = toml.dumps(data).splitlines()
                 
                 with open(filename, "w") as f:
@@ -248,14 +240,14 @@ class N01Ini:
                             this_line = this_line[:-5]
                             
                         # Remove the spaces that somehow propped up inbetween the = when dumping
-                        # This is still toml compliant but it is not clear if the app would work with the spaces in
+                        # Both are toml compliant but this reflects how to original app formatted it
                         if " = " in this_line:
                             this_line = this_line.replace(" = ", "=")
                             
                         f.write(this_line + '\n')
                         
             except Exception as e:
-                messagebox.showerror(title="Error saving n01.ini file", message=f"error: {e}")
+                messagebox.showerror(title="Saving n01.ini file", message=f"Error saving the ini file:\n{e}", icon="error")
                 return False
                 
             return True

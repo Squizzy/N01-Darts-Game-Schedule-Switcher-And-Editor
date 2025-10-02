@@ -62,11 +62,11 @@ class Schedule:
     def extract_toml_schedule_from_original_ini(self, data: dict[str, dict[str, str|int]]) -> bool:
 
         if "schedule" not in data:
-            messagebox.showerror(title="Error in loading n01.ini file", message="The schedule section is missing in the n01.ini file.")
+            # this should never happen normally!
+            messagebox.showerror(title="Extracting schedule from n01.ini file", message="Error extracting schedule from ini file:\nThe schedule section is missing.", icon="error")
             return False
 
         self._schedule_original_in_toml = data["schedule"]
-        # self._sort_schedule_from_toml_by_set(self._original_schedule)
         return True
 
 
@@ -80,64 +80,35 @@ class Schedule:
             if key == "count":
                 continue
             
+            # The number of the set is stored at the end of each variable name (key) eg "round_12"
+            # this_set will extract the integer between 1 and 3 digits that represents the set (set = line in a schedule)
             this_set = int(key[-3:]) if key[-3:].isnumeric() else int(key[-2:]) if key[-2:].isnumeric() else int(key[-1])
 
+            # Create the key if needed
             if this_set not in self._schedule_original_sorted_by_set:
                 self._schedule_original_sorted_by_set[this_set] = {}
-                
+            
+            # Store the set
             self._schedule_original_sorted_by_set[this_set][key[:-(len(str(this_set)) + 1)]] = data[key]
 
     
     def convert_modified_schedule_sorted_by_set_to_toml_schedule(self) -> bool:
         # Convert the imported schedule to a toml string
+        
+        # Reset the toml dictionary
         self._schedule_modified_in_toml = {}
+        
+        # Insert the count value
         self._schedule_modified_in_toml["count"] = len(self._schedule_modified_sorted_by_set)
+        
+        # Add all the elements of all the sets, restoring the key value to the original one (eg from set 12 of "round" -> "round_12" )
         for set in self._schedule_modified_sorted_by_set:
             for key in self._schedule_modified_sorted_by_set[set]:
                 self._schedule_modified_in_toml[f"{key}_{set}"] = self._schedule_modified_sorted_by_set[set][key]
                 
         return True
 
-    
-    # def save_schedule_as_csv(self, data: dict[str, str|int], filename: str) -> bool:
 
-    #     def extract_schedule_headers() -> None:
-
-    #         for key in self._original_schedule_sorted_by_set[0]:
-    #             self._schedule_header.append(key[:-2])
-
-        
-    #     # turn the dict into a list of strings to be saved
-    #     untomled_list: list[str] = toml.dumps(data).splitlines()
-        
-    #     # remove the stubs for the entries without values
-    #     untomled_list = list(map(lambda line: line[:-5] if line.endswith('"|||"') else line, untomled_list))
-
-    #     # Extract the headers
-    #     self.convert_schedule_in_toml_to_schedule_sorted_by_set(data)
-    #     extract_schedule_headers()
-
-    #     # Save the CSV data
-    #     try:        
-    #         with open(filename, "w", newline='') as f:
-    #             writer = csv.DictWriter(f, fieldnames=self._schedule_header)
-    #             writer.writeheader()
-                
-    #             for set in range(len(self._original_schedule_sorted_by_set)):
-    #                 this_row_data: dict[str, str|int] = {}
-    #                 for key in self._schedule_header:
-    #                     # The headers do not that the "_0" or "_1" etc 
-    #                     # so this need to be indicated when writing the CSV to ensure it goes to the correct column
-    #                     this_row_data[key] =  self._original_schedule_sorted_by_set[set][f"{key}_{set}"]
-    #                 writer.writerow(this_row_data)
-
-    #     except Exception as e:
-    #         messagebox.showerror(title="Error saving schedule csv file", message=f"error: {e}")
-    #         return False
-                    
-    #     return True
-
-    
     def import_schedule_from_csv(self) -> bool:
 
         def load_schedule_from_csv_sorted_by_sets() -> bool:
@@ -149,11 +120,11 @@ class Schedule:
                 self._csv_filename_of_schedule_to_import = askopenfilename(title=title, initialdir=".", filetypes=filetypes)
                     
                 return self._csv_filename_of_schedule_to_import != ""
-        
-                
+                       
             if not select_schedule_csv_file_to_load():
                 return False
             
+            # Reset the dictionary containing the data sorted by set
             self._schedule_imported_sorted_by_set = {}
             
             try:
@@ -182,7 +153,9 @@ class Schedule:
                         set += 1
                 
             except FileNotFoundError as e:
-                messagebox.showerror(title="CSV file to import", message=f"file {self._csv_filename_of_schedule_to_import} not found:\n{e}")
+                messagebox.showerror(title="CSV file to import", 
+                                     message=f"file {self._csv_filename_of_schedule_to_import} not found:\n{e}", 
+                                     icon="error")
                 return False
             
             return True
@@ -224,7 +197,6 @@ class Schedule:
             
             # Get the headers from the first line of data
             headers: list[str] = [*data[0]]
-            # csv_headers: dict[str, str|int] = data[0].keys()
         
             # Save the CSV data
             try:        
@@ -239,7 +211,9 @@ class Schedule:
                         writer.writerow(this_row_data)
 
             except Exception as e:
-                messagebox.showerror(title="Error saving schedule csv file", message=f"error: {e}")
+                messagebox.showerror(title="Saving schedule to CSV file", 
+                                     message=f"Error saving schedule to CSV:\n{e}", 
+                                     icon="error")
                 return False
             
             return True
@@ -248,7 +222,9 @@ class Schedule:
         
         # Select the file to save to
         if not select_filename_to_save_modified_schedule_as_csv():
-            messagebox.showinfo(title="CSV filename to save schedule", message="No filename selected.\naborting save.")
+            messagebox.showinfo(title="CSV filename to save schedule", 
+                                message="No filename selected.\naborting save.",
+                                icon="info")
             return False
         
         # Add the extension if not there by default
@@ -256,20 +232,45 @@ class Schedule:
             self._csv_filename_to_save_modified_schedule += ".csv"
         
         return write_data_to_csv_file(self._schedule_modified_sorted_by_set)        
-        # # Save the CSV data
-        # try:        
-        #     with open(self._modified_schedule_csv_to_save_filename, "w", newline='') as f:
-        #         writer = csv.DictWriter(f, fieldnames=csv_headers)
-        #         writer.writeheader()
-                
-        #         for set in range(len(self._modified_schedule_sorted_by_set)):
-        #             this_row_data: dict[str, str|int] = {}
-        #             for header in csv_headers:
-        #                 this_row_data[header] =  self._modified_schedule_sorted_by_set[set][header]
-        #             writer.writerow(this_row_data)
 
-        # except Exception as e:
-        #     messagebox.showerror(title="Error saving schedule csv file", message=f"error: {e}")
-        #     return False
+
+
+
+    
+    # def save_schedule_as_csv(self, data: dict[str, str|int], filename: str) -> bool:
+
+    #     def extract_schedule_headers() -> None:
+
+    #         for key in self._original_schedule_sorted_by_set[0]:
+    #             self._schedule_header.append(key[:-2])
+
         
-        # return True
+    #     # turn the dict into a list of strings to be saved
+    #     untomled_list: list[str] = toml.dumps(data).splitlines()
+        
+    #     # remove the stubs for the entries without values
+    #     untomled_list = list(map(lambda line: line[:-5] if line.endswith('"|||"') else line, untomled_list))
+
+    #     # Extract the headers
+    #     self.convert_schedule_in_toml_to_schedule_sorted_by_set(data)
+    #     extract_schedule_headers()
+
+    #     # Save the CSV data
+    #     try:        
+    #         with open(filename, "w", newline='') as f:
+    #             writer = csv.DictWriter(f, fieldnames=self._schedule_header)
+    #             writer.writeheader()
+                
+    #             for set in range(len(self._original_schedule_sorted_by_set)):
+    #                 this_row_data: dict[str, str|int] = {}
+    #                 for key in self._schedule_header:
+    #                     # The headers do not that the "_0" or "_1" etc 
+    #                     # so this need to be indicated when writing the CSV to ensure it goes to the correct column
+    #                     this_row_data[key] =  self._original_schedule_sorted_by_set[set][f"{key}_{set}"]
+    #                 writer.writerow(this_row_data)
+
+    #     except Exception as e:
+    #         messagebox.showerror(title="Error saving schedule csv file", message=f"error: {e}")
+    #         return False
+                    
+    #     return True
