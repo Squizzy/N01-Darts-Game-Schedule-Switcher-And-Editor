@@ -24,23 +24,59 @@ class N01Ini:
     _updated_ini_file_with_path: str = ""
 
     def __init__(self):
-        
+        """ Initializes the N01Ini class. Loads the n01.ini file and sets up initial state.
+
+        Returns:
+            bool: True if initialization was successful, False otherwise.
+        """
         if not self.load_original_ini_file():
             # TODO: maybe something to inform the instantiator?
             ...
 
     @property
     def ini_file_location(self) -> str:
+        """ Returns the path to the current n01.ini file that has been selected.
+
+        Args:
+            None
+            
+        Returns:
+            str: The path to the n01.ini file.
+        """
         return self._original_ini_file_with_path
     
     @property
     def original_ini_data_from_toml(self) -> dict[str, dict[str, str|int]]:
+        """ Returns the n01.ini data loaded from TOML as a dictionary.
+
+        Args: 
+            None
+
+        Returns:
+            dict[str, dict[str, str|int]]: The n01.ini data as a TOML dictionary.
+        """
         return self._original_ini_from_toml
     
     
     def load_original_ini_file(self) -> bool:
+        """ Loads the original n01.ini file and converts it from TOML to a dictionary.
+
+        Args:
+            None
+            
+        Returns:
+            bool: True if the file was successfully loaded, False otherwise.
+        """        
         
         def has_schedule(path: Path) -> bool:
+            """ Checks if the file at the given path contains a "[schedule]" section.
+
+            Args:
+                path (Path): The path to the file to check.
+
+            Returns:
+                bool: True if the file contains a "[schedule]" section, False otherwise.
+            """
             with open(path, "r") as f:
                 file=f.readlines()
                 for line in file:
@@ -49,8 +85,27 @@ class N01Ini:
                 return False
                 
         def identify_ini_files() -> None:
+            """ Identifies the location of the n01.ini file based on whether it's in the installer's 
+            virtual store or the current directory.
+
+            Args:
+                None
+
+            Returns:
+                None
+            """
             
             def file_found_at_path(path: Path) -> tuple[bool, bool]:
+                """ Checks if the file at the given path exists and if it contains a "[schedule]" section.
+
+                Args:
+                    path (Path): The path to the file to check.
+
+                Returns:
+                    tuple[bool, bool]: A tuple containing:
+                        - bool: True if the file exists, False otherwise.
+                        - bool: True if the file contains a "[schedule]" section, False otherwise.
+                """
                 if Path.exists(path):
                     return True, has_schedule(path)
                 return False, False
@@ -137,6 +192,15 @@ class N01Ini:
             return self._original_ini_file_with_path != ""
 
         def load_original_ini_file() -> bool:
+            """ Loads the original ini file content into self._original_ini_from_toml.
+            Adds ||| to replace the empty values which is not compliant to TOML
+            
+            Args:
+                None
+                
+            Returns:
+                None
+            """
             raw_data_lines: list[str] = []
             raw_data: str = ""
             
@@ -201,7 +265,14 @@ class N01Ini:
 
     
     def replace_original_schedule_with_imported_schedule(self, imported_schedule: dict[str, str|int]) -> None:
-        
+        """ Replaces the current schedule in the n01.ini with a new schedule imported or modified.
+
+        Args:
+            imported_schedule (dict[str, str|int]): The new schedule data in TOML dictionary.
+
+        Returns:
+            None
+        """        
         
         self._modified_ini_with_imported_schedule = self._original_ini_from_toml.copy()
         self._modified_ini_with_imported_schedule["schedule"] = {}
@@ -209,7 +280,14 @@ class N01Ini:
         
         
     def save_ini_with_updated_schedule(self) -> None:
-        
+        """Saves the n01.ini file with an updated schedule.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
         def select_modified_ini_file_path() -> bool:
                     
             title: str = "Select where to save the updated n01.ini file"

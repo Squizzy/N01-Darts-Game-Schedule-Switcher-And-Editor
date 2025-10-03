@@ -70,6 +70,14 @@ class UI:
         self._disable_buttons() 
 
     def _load_styles(self) -> None:
+        """ Set up the styles for the Ttk widgets
+        
+        Args:
+            None
+            
+        Returns:
+            None
+        """
         self._style = ttk.Style()
         # Buttons frame styles
         self._style.configure("quit.TButton",  # type: ignore
@@ -95,7 +103,14 @@ class UI:
                               background="lightblue")
 
     def _generate_buttons_frame(self) -> None:
-
+        """ Generates the selector buttons in ttk
+        
+        Args:
+            None
+            
+        Returns:
+            None
+        """
         # Generate a frame for the buttons
         # TODO: Is this the best way to place the frame?
         self._buttons_frame.place(x = 10, y = 10)
@@ -132,6 +147,14 @@ class UI:
         self._quit_app.grid(                  row=1, column=3, columnspan=1, padx=5, pady=2)
    
     def _disable_buttons(self) -> None:
+        """ Disables the buttons which should not be used at startup
+        
+        Args:
+            None
+            
+        Returns:
+            None
+        """
         self._display_original_schedule["state"] = "disabled"
         self._display_modified_schedule["state"] = "disabled"
         self._modify_schedule["state"] = "disabled"
@@ -139,6 +162,14 @@ class UI:
         self._set_schedule["state"] = "disabled"
         
     def _enable_buttons(self) -> None:
+        """ Enables the buttons for functions that can be accessed once a 
+        
+        Args:
+            None
+            
+        Returns:
+            None
+        """
         self._display_original_schedule["state"] = "enabled"
         self._display_modified_schedule["state"] = "enabled"
         self._modify_schedule["state"] = "enabled"
@@ -146,6 +177,14 @@ class UI:
         self._set_schedule["state"] = "enabled"
     
     def load_original_ini_schedule(self) -> None:
+        """ Instantiate the ini file (loading the ini file) and the schedule object and extract the ini schedule
+        
+        Args:
+            None
+        
+        returns:
+            None
+        """
         
         # Load the ini file
         self._ini_file = N01Ini()
@@ -178,6 +217,14 @@ class UI:
         self._enable_buttons()
 
     def load_modified_schedule(self) -> None:
+        """ Request schedule object to load a schedule from a CSV file
+        
+        Args: 
+            None
+            
+        Returns:
+            None
+        """
         schedule: Schedule = Schedule()
         
         # Get the schedule to do its magic importing from a csv in sorted by set format
@@ -191,21 +238,54 @@ class UI:
         self._enable_buttons()
         
     def display_original_schedule(self) -> None:
+        """ Create the table to view (not modify) the schedule from the ini file
+        
+        Args:
+            None
+            
+        Returns:
+            None
+        """
         # Stub to switch between the original and the modified schedule
         self._create_table_to_view_schedule(self._schedule_original_sorted_by_set)
 
     def display_modified_schedule(self) -> None:
+        """ Create the table to view (not modify) the schedule content to be modified 
+        (either a copy from the ini if only the ini is loaded, or the loaded CSV schedule or whatever has been modified already)
+        
+        Args:
+            None
+            
+        Returns:
+            None
+        """
         # Stub to switch between the original and the modified schedule
         self._create_table_to_view_schedule(self._schedule_modified_sorted_by_set)
         
     def _destroy_schedule_frame(self) -> None:
+        """ Destroys the frame onto which the schedule tables (view or modify) are created
+        
+        Args:
+            None
+            
+        Returns:
+            None
+        """
         # Destroys the schedule frame before displaying a new one (view or modify mode)
         if self._schedule_frame.winfo_exists():
             self._schedule_frame.grid_forget()
             self._schedule_frame.destroy()
     
     def _create_schedule_frame(self) -> None:
+        """ Create a frame for drawing the schedule table (view or modify) 
+        Currently only a non-scrollable frame is available
         
+        Args:
+            None
+            
+        Returns:
+            None
+        """
         # Non-scrollable frame
         self._schedule_frame = tk.Frame(self._window, bg="lightblue")
         self._schedule_frame.place(x = 10, y = 140)
@@ -228,8 +308,25 @@ class UI:
         # canvas.configure(yscrollcommand=scrollbar.set)           
     
     def _create_table_to_view_schedule(self, schedule:dict[int, dict[str, str|int]] = {}) -> None:
+        """ Create the viewable-only table of the schedule 
+        
+        Args:
+            schedule (dict[int, dict[str, str|int]]): The schedule sorted by set to be displayed
+            
+        Returns:
+            None
+            """
         
         def display_table_add_headers(header_info:list[str], x:int, y:int) -> None:
+            """ Create the headers line
+            
+            Args:
+                header_info (list[str]): the list of header names
+                x, y: the starting position (column (x) and row (y)) in the frame grid (eg row = is used for the add/remove buttons)
+                
+            Returns:
+                None
+            """
             for item in header_info:
                 header = ttk.Label(self._schedule_frame, 
                                     text=item.replace("_", "\n"), 
@@ -247,7 +344,16 @@ class UI:
                 x += 1        
         
         def display_table_add_line_values(values_info: dict[str, str|int], row_key:int , x:int , y:int) -> None:
+            """ Create a line with its content
             
+            Args:
+                values_info (dict[str, str|int]): the dictionary list of values to put in the columns
+                row_key (int): The set value this row belongs to
+                x, y: the starting position (column (x) and row (y)) in the frame grid (eg row = is used for the add/remove buttons)
+                
+            Returns:
+                None
+            """            
             for value_info in values_info:
                 value:str|int
                 if value_info == "set_no":
@@ -346,13 +452,38 @@ class UI:
             
     
     def modify_schedule(self) -> None:
+        """ Launch the creation of the table to modify a schedule
+        
+        Args: 
+            None
+            
+        Returns:
+            None
+        """
         # Stub for the buttons (lazily not passing the arguments from the button)
         self._create_table_to_modify_loaded_schedule(self._schedule_modified_sorted_by_set)
     
     
     def _create_table_to_modify_loaded_schedule(self, schedule:dict[int, dict[str, str|int]]) -> None:
+        """ Create the modify table for the schedule to be modified
+        
+        Args:
+            schedule (dict[int, dict[str, str|int]]): The schedule sorted by set to be modified
+            
+        Returns:
+            None    
+        """        
         
         def modification_table_add_headers(header_info: list[str], x:int, y:int) -> None:
+            """ Create the headers line
+            
+            Args:
+                header_info (list[str]): the list of header names
+                x, y: the starting position (column (x) and row (y)) in the frame grid (eg row = is used for the add/remove buttons)
+                
+            Returns:
+                None
+            """            
             for item in header_info:
                 self._header[x] = ttk.Label(self._schedule_frame, 
                                             text=item.replace("_", "\n"), 
@@ -371,7 +502,15 @@ class UI:
                 x += 1
         
         def modification_table_add_header_tooltips() -> None:
-    
+            """ Add tooltips for the headers to help understand what the column is for
+            
+            Args:
+                None
+                
+            Returns:
+                None
+            """
+       
             for i in range(len(self._header)):
                 tooltip: str = ""
                 header_text = self._header[i]["text"].replace("\n", "_")
@@ -393,7 +532,17 @@ class UI:
                             ToolTip(self._header[i], msg=tooltip)
 
         def modification_table_add_values_line(line_info:dict[str, str|int], row_key:int , x:int , y:int) -> None:
+            """ Create a line with its content
             
+            Args:
+                values_info (dict[str, str|int]): the dictionary list of values to put in the columns
+                row_key (int): The set value this row belongs to
+                x, y: the starting position (column (x) and row (y)) in the frame grid (eg row = is used for the add/remove buttons)
+                
+            Returns:
+                None
+            """   
+                        
             com_level_values:list[str] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
             
             # Fill in the data
@@ -563,7 +712,14 @@ class UI:
                         continue                                        
         
         def modification_table_add_new_line() -> None:
-        
+            """ Adds a new empty line to the modifying table
+            
+            Args:
+                None
+                
+            Returns:
+                None
+            """
             new_row_key = len(self._schedule_modified_sorted_by_set)
             empty_schedule_line: dict[str, str|int] = {"start_score": 0,
                                                     "round_limit": 0,
@@ -585,7 +741,14 @@ class UI:
             self.modify_schedule()
         
         def modification_table_delete_selected_lines() -> None:
-
+            """ Deletes all the line in the schedule that have been marked for deletion
+            
+            Args:
+                None
+                
+            Results:
+                None
+            """
             for choice in range(len(self._delete_selector_var)):
                 if self._delete_selector_var[choice].get():
                     self._schedule_modified_sorted_by_set.pop(choice)
@@ -906,7 +1069,16 @@ class UI:
         #     x = 0
         
     def _read_table_of_modified_values(self) -> None:
-        
+        """ Reads the modified schedule values from the modify table
+        This method updates the internal schedule data structure
+        with the latest changes made by the user interface.
+
+        Args:
+            None
+            
+        Returns:
+            None
+        """
         self._schedule_modified_sorted_by_set = {}
         number_of_entries = len(self._start_score_spinbox_var)
         
@@ -929,8 +1101,20 @@ class UI:
     
     
     def save_schedule_as_csv(self) -> None:
+        """ Saves the modified schedule to a CSV file.
+
+        This method converts the internal schedule data structure into a CSV format 
+        and writes it to a fileusing the Schedule object to handle the file writing. 
+
+        Args:
+            None.
+            
+        Raises: (not implemented yet)
+            TypeError: If the filename is not a string.
+            IOError: If there's an issue writing to the file.
+        """
+
         schedule: Schedule = Schedule()
-        
         
         if hasattr(self, "_start_score_spinbox"):
             self._read_table_of_modified_values()
@@ -941,7 +1125,21 @@ class UI:
         schedule.save_modified_schedule_as_csv(self._schedule_modified_sorted_by_set)
 
     def set_schedule_to_ini(self) -> None:
+        """Saves the modified schedule to an INI file.
+        
+        This method saves the internal schedule data to an INI file,
+        using the N01Ini object to handle the file writing.
 
+        Args:
+            None.
+
+        Returns:
+            None.
+
+        Raises: (not implemented yet)
+            TypeError: If the filename is not a string.
+            IOError: If there's an issue writing to the file.
+        """
         # Check if there is a modified schedule, if not, abort        
         if not hasattr(self, "_modified_schedule") or not bool(self._schedule_modified_sorted_by_set):
             messagebox.showwarning(title="Modified schedule", message="No schedule loaded - aborting", icon="warning")
@@ -974,10 +1172,27 @@ class UI:
         
         # Save the ini with the updated schedule
         self._ini_file.save_ini_with_updated_schedule()
-    
+
     def quit(self)-> None:
+        """ Destroys the Tk window
+        
+        Args: 
+            None
+            
+        Returns:
+            None
+        """
         self._window.destroy()
     
     @property
     def start(self) -> None:
+        """ Starts the application loop
+        
+        Args:
+            None
+            
+        Returns:  
+            None
+        """
         self._window.mainloop()
+

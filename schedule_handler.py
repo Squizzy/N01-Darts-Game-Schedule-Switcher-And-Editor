@@ -40,27 +40,59 @@ class Schedule:
         
     @property
     def schedule_original_in_toml(self) -> dict[str, str|int]:
+        """ Retrieves the original schedule in a TOML format.
+
+        Returns:
+            A dictionary containing the original schedule data.
+        """
         return self._schedule_original_in_toml
     
     @property
     def schedule_original_sorted_by_set(self) -> dict[int, dict[str, str|int]]:
+        """ Retrieves the schedule sorted by set.
+
+        Returns: 
+            A dictionary with set IDs as keys and the corresponding schedule data as values.
+        """
         return self._schedule_original_sorted_by_set
     
     @property
     def schedule_imported_in_toml(self) -> dict[str, str|int]:
+        """ Retrieves the imported schedule from TOML format.
+
+        Returns:
+            A dictionary containing the imported schedule data.
+        """
         return self._schedule_imported_in_toml
     
     @property
-    def schedule_modified_in_toml(self) -> dict[str, str|int]:
-        return self._schedule_modified_in_toml
+    def schedule_imported_sorted_by_set(self) -> dict[int, dict[str, str|int]]:
+        """ Retrieves the imported schedule sorted by set.
+
+        Returns:
+            A dictionary with set IDs as keys and the corresponding imported schedule data as values.
+        """
+        return self._schedule_imported_sorted_by_set
     
     @property
-    def schedule_imported_sorted_by_set(self) -> dict[int, dict[str, str|int]]:
-        return self._schedule_imported_sorted_by_set
+    def schedule_modified_in_toml(self) -> dict[str, str|int]:
+        """ Retrieves the modified schedule sorted by set.
+
+        Returns:
+            A dictionary with set IDs as keys and the corresponding imported schedule data as values.
+        """
+        return self._schedule_modified_in_toml
 
     
     def extract_toml_schedule_from_original_ini(self, data: dict[str, dict[str, str|int]]) -> bool:
+        """ Extracts the schedule from a Toml file and stores it in `_schedule_original_in_toml`.
 
+        Args:
+            data (dict[str, dict[str, str|int]]): A dictionary containing the original schedule data.
+            
+        Returns: 
+            True if successful, False otherwise.
+        """
         if "schedule" not in data:
             # this should never happen normally!
             messagebox.showerror(title="Extracting schedule from n01.ini file", message="Error extracting schedule from ini file:\nThe schedule section is missing.", icon="error")
@@ -71,6 +103,14 @@ class Schedule:
 
 
     def convert_schedule_in_toml_to_schedule_sorted_by_set(self, data: dict[str, str|int]) -> None:
+        """ Converts the schedule from a TOML format to sorted by set format and stores it in `_schedule_original_sorted_by_set`.
+
+        Args:
+            data (dict[str, str|int]): A dictionary containing the original schedule data
+            
+        Returns: 
+            None
+        """
         # Group the data into rounds
         self._schedule_original_sorted_by_set = {}
         
@@ -93,6 +133,14 @@ class Schedule:
 
     
     def convert_modified_schedule_sorted_by_set_to_toml_schedule(self) -> bool:
+        """ Converts the schedule sorted by set to TOML format and stores it in `_schedule_original_sorted_by_set`.
+
+        Args:
+            data (dict[str, str|int]): A dictionary containing the original schedule data sorted by set
+
+        Returns:
+            True if successful, False otherwise
+        """
         # Convert the imported schedule to a toml string
         
         # Reset the toml dictionary
@@ -110,11 +158,34 @@ class Schedule:
 
 
     def import_schedule_from_csv(self) -> bool:
+        """ Imports a CSV file and stores it in `_csv_filename_of_schedule_to_import`.
+
+        Args:
+            None
+            
+        Returns: 
+            True if successful, False otherwise
+        """
 
         def load_schedule_from_csv_sorted_by_sets() -> bool:
+            """ Loads the data from a CSV data (sorted by sets) into a dictionary sorted by sets self._schedule_imported_sorted_by_set
+            
+            Args:
+                None
+                
+            Returns:
+                True if there was no issue loading the file content, False otherwise
+            """
             
             def select_schedule_csv_file_to_load() -> bool:
+                """  Query for the file name and location to where to store the schedule in CSV format (sorted by set)
                 
+                Args:
+                    None
+                
+                Returns:
+                    True if a file was identified, False otherwise
+                """
                 title: str = "Select the schedule file to import"
                 filetypes: list[tuple[str, str]] = [("CSV files", "*.csv"), ("All files", "*.*")]
                 self._csv_filename_of_schedule_to_import = askopenfilename(title=title, initialdir=".", filetypes=filetypes)
@@ -161,6 +232,14 @@ class Schedule:
             return True
 
         def convert_imported_schedule_to_toml_schedule() -> bool:
+            """ Converts the imported schedule sorted by sets, into to a TOML format, and stores it in self._schedule_imported_in_toml.
+
+            Args:
+                None
+
+            Returns: 
+                True if successful, False otherwise. actually, currently returns true always
+            """
             # Convert the imported schedule to a toml string
             
             for set in self._schedule_imported_sorted_by_set:
@@ -180,13 +259,36 @@ class Schedule:
 
 
     def store_schedule_modifications(self, update_sorted_by_set: dict[int, dict[str, str|int]]) -> None:
+        """ Stores the modified schedule by set in `_schedule_modified_sorted_by_set`.
+
+        Args:
+            update_sorted_by_set (dict[int, dict[str, str|int]]): A dictionary with set IDs as keys and the corresponding modified schedule data.
+            
+        Returns:
+            None.
+        """
         self._schedule_modified_sorted_by_set = update_sorted_by_set
     
     
     def save_modified_schedule_as_csv(self, data: dict[int, dict[str, str|int]]) -> bool:
+        """ Saves the modified schedule as a CSV file.
+
+        Args:
+            data (dict[int, dict[str, str|int]]): A dictionary containing the modified schedule data.
+            
+        Returns: 
+            True if successful, False otherwise.
+        """
         
         def select_filename_to_save_modified_schedule_as_csv() -> bool:
-        
+            """ Query for the file name and location to where to store the schedule in CSV format (sorted by set)
+            
+            Args: 
+                None
+                
+            Returns:
+                True if a file name was identified, False otherwise
+            """
             title: str = "Select filename to save the schedule file to csv as"
             filetypes: list[tuple[str, str]] = [("CSV files", "*.csv"), ("All files", "*.*")]
             self._csv_filename_to_save_modified_schedule = asksaveasfilename(title=title, initialdir=".", filetypes=filetypes)
@@ -194,6 +296,15 @@ class Schedule:
             return self._csv_filename_to_save_modified_schedule != ""
     
         def write_data_to_csv_file(data: dict[int, dict[str, str|int]]) -> bool:
+            """ Store the schedule into a CSV file (sorted by set). If an existing file has been selected, this file is overwritten.
+            
+            Args:
+                data (dict[int, dict[str, str|int]]): the schedule to save in the CSV
+                
+            Returns:
+                True if the file was created successfully, False otherwise
+            """
+            
             
             # Get the headers from the first line of data
             headers: list[str] = [*data[0]]
